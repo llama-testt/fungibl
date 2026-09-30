@@ -36,7 +36,7 @@ type BtnProps = { href: string; children: ReactNode; variant?: "primary" | "ghos
 
 export function Button({ href, children, variant = "primary", className = "", arrow = false }: BtnProps) {
   const styles = {
-    primary: "bg-charcoal text-paper border border-charcoal hover:bg-[#2e2c29]",
+    primary: "bg-charcoal text-paper border border-charcoal hover:bg-charcoal/90",
     ghost: "border border-ink/80 text-ink hover:bg-ink/[0.04]",
     paper: "bg-paper-light/95 text-ink border border-paper-light hover:bg-paper-light",
   }[variant];

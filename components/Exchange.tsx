@@ -88,7 +88,7 @@ export function Exchange({ launch: l, compact = false }: { launch: Launch; compa
             : `Return ${qty} NFT${qty > 1 ? "s" : ""} to the vault and receive ${fmtInt(coins)} $${l.ticker}, at the ratio set at launch.`}
         </p>
 
-        <button className={`group inline-flex items-center justify-between gap-4 rounded-[4px] bg-charcoal px-6 py-4 font-mono text-[13px] text-paper transition-colors hover:bg-[#2e2c29] ${compact ? "" : "md:col-span-3"}`}>
+        <button className={`group inline-flex items-center justify-between gap-4 rounded-[4px] bg-charcoal px-6 py-4 font-mono text-[13px] text-paper transition-colors hover:bg-charcoal/90 ${compact ? "" : "md:col-span-3"}`}>
           {dir === "toNft" ? "Trade coin for NFT" : "Trade NFT for coin"} <Arrow />
         </button>
       </div>

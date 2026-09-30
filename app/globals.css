@@ -2,31 +2,65 @@
 @tailwind components;
 @tailwind utilities;
 
+:root,
+[data-theme="light"] {
+  --paper: 239 228 206;
+  --paper-deep: 230 216 189;
+  --paper-light: 245 237 220;
+  --ink: 32 32 30;
+  --ink-soft: 58 56 51;
+  --muted: 107 98 88;
+  --charcoal: 34 33 31;
+  --moss: 110 115 88;
+  --clay: 160 105 74;
+  --grain-blend: multiply;
+  --grain-opacity: 0.07;
+  color-scheme: light;
+}
+
+[data-theme="dark"] {
+  --paper: 23 22 20;
+  --paper-deep: 33 31 28;
+  --paper-light: 40 38 34;
+  --ink: 236 227 210;
+  --ink-soft: 205 196 180;
+  --muted: 160 151 138;
+  --charcoal: 236 227 210;
+  --moss: 150 160 118;
+  --clay: 196 136 100;
+  --grain-blend: soft-light;
+  --grain-opacity: 0.05;
+  color-scheme: dark;
+}
+
+/* Photographs stay in daylight whatever the theme: text on them keeps light tokens. */
+[data-theme="light"] {
+  color: rgb(var(--ink));
+}
+
 :root {
-  --paper: #efe4ce;
-  --ink: #20201e;
-  --muted: #6b6258;
-  --line: rgba(32, 32, 30, 0.22);
+  --line: rgb(var(--ink) / 0.2);
   --grain: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.12  0 0 0 0 0.1  0 0 0 0 0.08  0 0 0 0.9 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
 }
 
 html {
-  background: var(--paper);
-  color: var(--ink);
+  background: rgb(var(--paper));
+  color: rgb(var(--ink));
+  transition: background-color 400ms ease;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
 
 body {
   background:
-    radial-gradient(120% 80% at 50% 0%, #f4ead6 0%, rgba(239, 228, 206, 0) 60%),
-    var(--paper);
+    radial-gradient(120% 80% at 50% 0%, rgb(var(--paper-light) / 0.9) 0%, rgb(var(--paper) / 0) 60%),
+    rgb(var(--paper));
   min-height: 100vh;
 }
 
 ::selection {
-  background: #20201e;
-  color: #efe4ce;
+  background: rgb(var(--ink));
+  color: rgb(var(--paper));
 }
 
 /* Paper grain across the whole page */
@@ -36,8 +70,8 @@ body {
   inset: 0;
   pointer-events: none;
   background-image: var(--grain);
-  opacity: 0.07;
-  mix-blend-mode: multiply;
+  opacity: var(--grain-opacity);
+  mix-blend-mode: var(--grain-blend);
   z-index: 60;
 }
 
@@ -126,18 +160,18 @@ body {
   padding: 18px 18px;
   font-size: 17px;
   letter-spacing: -0.01em;
-  color: var(--ink);
+  color: rgb(var(--ink));
   transition: border-color 300ms;
 }
-.field::placeholder { color: rgba(107, 98, 88, 0.6); }
-.field:focus { outline: none; border-color: #20201e; }
+.field::placeholder { color: rgb(var(--muted) / 0.6); }
+.field:focus { outline: none; border-color: rgb(var(--ink)); }
 
 .label {
   font-family: "IBM Plex Mono", ui-monospace, monospace;
   font-size: 11px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--muted);
+  color: rgb(var(--muted));
 }
 
 input[type="number"]::-webkit-inner-spin-button,

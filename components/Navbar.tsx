@@ -4,6 +4,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { WalletButton } from "./WalletButton";
+import { ThemeToggle, XIcon } from "./ThemeToggle";
+import { SOCIAL } from "@/lib/site";
 
 const LINKS = [
   { href: "/explore", label: "Explore" },
@@ -45,15 +47,32 @@ export function Navbar({ variant = "overlay" }: { variant?: "overlay" | "paper" 
           ))}
         </ul>
 
-        <div className="ml-auto hidden items-center gap-10 md:flex">
-          <button aria-label="Search launches" className="text-ink/85 transition-opacity hover:opacity-60">
+        <div className="ml-auto hidden items-center gap-[1.6vw] md:flex">
+          <button aria-label="Search launches" className="flex h-9 w-9 items-center justify-center text-ink/85 transition-opacity hover:opacity-60">
             <SearchIcon />
           </button>
-          <WalletButton variant={variant === "overlay" ? "overlay" : "paper"} />
+          <a
+            href={SOCIAL.x}
+            target="_blank"
+            rel="noreferrer"
+            aria-label="Fungibl on X"
+            title="X / Twitter"
+            className="flex h-9 w-9 items-center justify-center text-ink/85 transition-opacity hover:opacity-60"
+          >
+            <XIcon className="h-[16px] w-[16px]" />
+          </a>
+          <ThemeToggle />
+          <WalletButton variant={variant === "overlay" ? "overlay" : "paper"} className="ml-[1vw]" />
         </div>
 
+        <div className="ml-auto flex items-center gap-1 md:hidden">
+          <a href={SOCIAL.x} target="_blank" rel="noreferrer" aria-label="Fungibl on X" className="flex h-10 w-10 items-center justify-center text-ink/85">
+            <XIcon className="h-[15px] w-[15px]" />
+          </a>
+          <ThemeToggle className="h-10 w-10" />
+        </div>
         <button
-          className="ml-auto flex h-10 w-10 flex-col items-end justify-center gap-[6px] md:hidden"
+          className="flex h-10 w-10 flex-col items-end justify-center gap-[6px] md:hidden"
           aria-label={open ? "Close menu" : "Open menu"}
           aria-expanded={open}
           onClick={() => setOpen((o) => !o)}

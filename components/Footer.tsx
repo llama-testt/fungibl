@@ -10,7 +10,7 @@ export function Footer() {
     <footer className="mt-28 overflow-x-clip md:mt-[11vw]">
       {/* Closing window — the same sky, later in the evening */}
       <div className="px-4 md:px-[3.5vw]">
-        <div className="window relative mx-auto aspect-[4/5] w-full md:aspect-[2.6/1]">
+        <div data-theme="light" className="window relative mx-auto aspect-[4/5] w-full md:aspect-[2.6/1]">
           <div
             className="photo absolute inset-0"
             style={{ backgroundImage: `url(${PLATE})`, backgroundSize: "cover", backgroundPosition: "50% 8%", filter: "saturate(0.85) contrast(0.95) sepia(0.12) brightness(0.97)" }}

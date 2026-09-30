@@ -4,7 +4,6 @@ import { useEffect, useRef } from "react";
 
 type Dot = { hx: number; hy: number; x: number; y: number; vx: number; vy: number; hot: boolean };
 
-const INK = "#20201E";
 const HOT = "#A0694A"; // clay — the site's one accent
 
 /**
@@ -22,6 +21,7 @@ export function DotWordmark({ text = "Fungibl", className = "" }: { text?: strin
     const ctx = canvas.getContext("2d")!;
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
+    let INK = getComputedStyle(box).color || "#20201E";
     let dots: Dot[] = [];
     let step = 10;
     let r = 4;
@@ -163,6 +163,13 @@ export function DotWordmark({ text = "Fungibl", className = "" }: { text?: strin
       ro.observe(box);
     });
 
+    const onTheme = () => {
+      requestAnimationFrame(() => {
+        INK = getComputedStyle(box).color || INK;
+        draw();
+      });
+    };
+    window.addEventListener("fungibl-theme", onTheme);
     canvas.addEventListener("pointermove", onMove);
     canvas.addEventListener("pointerdown", onMove);
     canvas.addEventListener("pointerleave", onLeave);
@@ -170,6 +177,7 @@ export function DotWordmark({ text = "Fungibl", className = "" }: { text?: strin
     return () => {
       ro.disconnect();
       cancelAnimationFrame(raf);
+      window.removeEventListener("fungibl-theme", onTheme);
       canvas.removeEventListener("pointermove", onMove);
       canvas.removeEventListener("pointerdown", onMove);
       canvas.removeEventListener("pointerleave", onLeave);
@@ -177,7 +185,7 @@ export function DotWordmark({ text = "Fungibl", className = "" }: { text?: strin
   }, [text]);
 
   return (
-    <div ref={wrap} className={`font-sans ${className}`}>
+    <div ref={wrap} className={`font-sans text-ink ${className}`}>
       <canvas ref={cvs} role="img" aria-label={text} className="block w-full touch-pan-y" />
     </div>
   );

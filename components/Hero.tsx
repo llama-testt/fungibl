@@ -54,6 +54,7 @@ export function Hero() {
       {/* ——— Desktop: one photographed window ——— */}
       <div className="hidden px-[3.5vw] pt-[4.2vh] md:block">
         <div
+          data-theme="light"
           className="window relative mx-auto w-full bg-[#d9c7a6]"
           style={{ height: "min(calc(93vw / 1.48), calc(100vh - 7vh))", minHeight: 620 }}
         >
@@ -109,7 +110,7 @@ export function Hero() {
           </div>
         </div>
         <div className="px-4">
-          <div className="window relative aspect-[4/5] w-full">
+          <div data-theme="light" className="window relative aspect-[4/5] w-full">
             <div className="photo absolute inset-0 bg-cover" style={{ backgroundImage: `url(${PLATE})`, backgroundPosition: "80% 40%", backgroundSize: "auto 118%" }} />
             <div className="pointer-events-none absolute inset-0 overflow-hidden">
               <div className="film-grain" />

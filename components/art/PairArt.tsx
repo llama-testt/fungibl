@@ -29,7 +29,7 @@ export function PairArt({
   const b = BACKDROPS[launch.backdrop];
   const real = launch.backdrop === "summit";
   return (
-    <div className={`group/art relative overflow-hidden bg-[#c8b89a] ${className}`}>
+    <div data-theme="light" className={`group/art relative overflow-hidden bg-[#c8b89a] ${className}`}>
       <div
         className="photo absolute inset-0 transition-transform duration-[1600ms] ease-slow group-hover/art:scale-[1.03]"
         style={{ backgroundImage: `url(${PLATE})`, backgroundSize: b.size, backgroundPosition: b.pos, filter: b.tint }}

@@ -430,7 +430,7 @@ export function CreateFlow({ index = "05" }: { index?: string }) {
                   step={25}
                   value={Math.min(taxBps, maxTax)}
                   onChange={(e) => setTaxBps(Number(e.target.value))}
-                  className="w-full accent-[#20201E]"
+                  className="w-full accent-ink"
                 />
                 <span className="w-16 text-right font-mono text-[15px]">{(Math.min(taxBps, maxTax) / 100).toFixed(2)}%</span>
               </div>

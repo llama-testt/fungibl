@@ -5,14 +5,15 @@ export default {
   theme: {
     extend: {
       colors: {
-        paper: { DEFAULT: "#EFE4CE", deep: "#E6D8BD", light: "#F5EDDC" },
-        ink: { DEFAULT: "#20201E", soft: "#3A3833" },
-        muted: "#6B6258",
-        charcoal: "#22211F",
-        line: "rgba(32, 32, 30, 0.22)",
+        paper: { DEFAULT: "rgb(var(--paper) / <alpha-value>)", deep: "rgb(var(--paper-deep) / <alpha-value>)", light: "rgb(var(--paper-light) / <alpha-value>)" },
+        ink: { DEFAULT: "rgb(var(--ink) / <alpha-value>)", soft: "rgb(var(--ink-soft) / <alpha-value>)" },
+        muted: "rgb(var(--muted) / <alpha-value>)",
+        charcoal: "rgb(var(--charcoal) / <alpha-value>)",
+        line: "rgb(var(--ink) / 0.2)",
         lineDark: "rgba(239, 228, 206, 0.28)",
-        moss: "#6E7358",
-        clay: "#A0694A",
+        cream: "#EFE4CE",
+        moss: "rgb(var(--moss) / <alpha-value>)",
+        clay: "rgb(var(--clay) / <alpha-value>)",
       },
       fontFamily: {
         sans: ["var(--font-geist-sans)", "Helvetica Neue", "Arial", "sans-serif"],

@@ -75,7 +75,7 @@ function Stage({ p }: { p: number }) {
   const dotY = 60 - Math.pow(raised, 1.7) * 56;
 
   return (
-    <div className="window relative aspect-[4/3] w-full !rounded-[22px] bg-[#cdbd9e] [container-type:inline-size]">
+    <div data-theme="light" className="window relative aspect-[4/3] w-full !rounded-[22px] bg-[#cdbd9e] [container-type:inline-size]">
       {/* sky */}
       <div
         className="photo absolute inset-0"
