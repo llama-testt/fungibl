@@ -34,6 +34,9 @@ export type Launch = {
   thresholdEth?: number;
   graduated?: boolean;
   launchedAt?: number; // unix seconds
+  feeRecipient?: `0x${string}`;
+  collectionAddress?: `0x${string}`;
+  inVault?: number;
 };
 
 export const launches: Launch[] = [

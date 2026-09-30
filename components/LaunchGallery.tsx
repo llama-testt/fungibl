@@ -72,12 +72,12 @@ export function LaunchGallery({ feed }: { feed: LaunchFeed }) {
                     {fmtInt(f.minted)}
                     <span className="text-muted"> / {fmtInt(f.supply)}</span>
                   </p>
-                  <p className="mt-1 font-mono text-[12px] text-muted">Minted · floor {f.floor} ETH</p>
+                  <p className="mt-1 font-mono text-[12px] text-muted">{pons ? `Minted · ${fmtInt(f.ratio ?? 0)} $${f.ticker} each` : `Minted · floor ${f.floor} ETH`}</p>
                 </>
               ) : (
                 <>
-                  <p className="mt-3 text-[34px] tracking-[-0.03em] text-muted">Soon</p>
-                  <p className="mt-1 font-mono text-[12px] text-muted">Opens with Fungibl collections</p>
+                  <p className="mt-3 text-[34px] tracking-[-0.03em] text-muted">Not opened</p>
+                  <p className="mt-1 font-mono text-[12px] text-muted">Creator can open it anytime</p>
                 </>
               )}
             </div>

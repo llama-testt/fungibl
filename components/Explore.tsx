@@ -91,7 +91,7 @@ export function Explore({
                       ["Price", coinPrice(l)],
                       ["Mkt cap", coinMcap(l)],
                       ["Curve", l.graduated ? "Graduated" : `${l.progress}%`],
-                      ["Collection", "Soon"],
+                      ["Collection", l.supply != null ? `${l.minted}/${l.supply}` : "—"],
                     ]
                   : [
                       ["Coin mkt cap", coinMcap(l)],

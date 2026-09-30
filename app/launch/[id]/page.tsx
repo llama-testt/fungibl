@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PairArt } from "@/components/art/PairArt";
+import { Suspense } from "react";
+import { CollectionPanel } from "@/components/CollectionPanel";
 import { Exchange } from "@/components/Exchange";
 import { Footer } from "@/components/Footer";
 import { Progress } from "@/components/LaunchRow";
@@ -61,7 +63,7 @@ export default async function LaunchPage({ params }: { params: Promise<{ id: str
                     ["Market cap", coinMcap(l)],
                     ["Raised", `${fmtEthPrecise(l.raisedEth ?? 0)}`],
                     ["Graduates at", `${fmtEthPrecise(l.thresholdEth ?? 0)}`],
-                    ["Collection", "Soon"],
+                    ["Collection", l.supply != null ? `${l.minted} / ${l.supply}` : "Not opened"],
                     ["Chain", "Robinhood"],
                   ]
                 : [
@@ -88,34 +90,51 @@ export default async function LaunchPage({ params }: { params: Promise<{ id: str
         </div>
       </section>
 
-      <section className="mx-auto max-w-[1680px] px-6 pt-24 md:px-[4.2vw] md:pt-[8vw]">
+      <section id="collection" className="mx-auto max-w-[1680px] scroll-mt-8 px-6 pt-24 md:px-[4.2vw] md:pt-[8vw]">
         <div className="flex items-center gap-4 border-b border-line pb-4 font-mono text-[11px] uppercase tracking-label text-muted">
           <span className="text-ink">Trade</span> <span>Coin ⇄ NFT</span>
+          {pons && l.collectionAddress && (
+            <a href={explorerAddress(l.collectionAddress)} target="_blank" rel="noreferrer" className="u-link ml-auto normal-case tracking-normal">
+              Collection contract ↗
+            </a>
+          )}
         </div>
         <div className="mt-10 rounded-[18px] border border-line bg-paper-light/40 p-6 md:p-[3.2vw]">
           {pons ? (
-            <div className="grid gap-8 md:grid-cols-12 md:items-end">
-              <div className="md:col-span-7">
-                <p className="label">Contract</p>
-                <p className="mt-3 break-all font-mono text-[14px]">{l.address}</p>
-                <p className="mt-6 max-w-[36em] font-mono text-[12px] leading-[1.7] text-muted">
-                  This coin trades on its Pons V2 bonding curve until it raises {fmtEthPrecise(l.thresholdEth ?? 0)}, then graduates into a
-                  locked Uniswap V4 pool. The coin ⇄ NFT vault opens here once Fungibl collections go live.
-                </p>
-              </div>
-              <div className="flex flex-col gap-3 md:col-span-5">
-                <a href="https://ponsfamily.com" target="_blank" rel="noreferrer" className="group inline-flex items-center justify-between rounded-[4px] bg-charcoal px-6 py-4 font-mono text-[13px] text-paper">
-                  Trade on Pons <Arrow />
-                </a>
-                <a href={explorerAddress(l.address!)} target="_blank" rel="noreferrer" className="group inline-flex items-center justify-between rounded-[4px] border border-ink/80 px-6 py-4 font-mono text-[13px]">
-                  View on Blockscout <Arrow />
-                </a>
-              </div>
-            </div>
+            <Suspense>
+              <CollectionPanel
+                coin={l.address!}
+                name={l.name}
+                ticker={l.ticker}
+                deployer={l.deployer}
+                feeRecipient={l.feeRecipient}
+                collection={l.collectionAddress}
+              />
+            </Suspense>
           ) : (
             <Exchange launch={l} />
           )}
         </div>
+
+        {pons && (
+          <div className="mt-8 grid gap-6 border-t border-line pt-6 md:grid-cols-12 md:items-end">
+            <div className="md:col-span-7">
+              <p className="label">Coin contract</p>
+              <p className="mt-3 break-all font-mono text-[13px]">{l.address}</p>
+              <p className="mt-4 max-w-[36em] font-mono text-[12px] leading-[1.7] text-muted">
+                Trades on its Pons V2 bonding curve until it raises {fmtEthPrecise(l.thresholdEth ?? 0)}, then graduates into a locked Uniswap V4 pool.
+              </p>
+            </div>
+            <div className="flex flex-col gap-3 md:col-span-5">
+              <a href="https://ponsfamily.com" target="_blank" rel="noreferrer" className="group inline-flex items-center justify-between rounded-[4px] border border-ink/80 px-6 py-4 font-mono text-[13px]">
+                Buy ${l.ticker} on Pons <Arrow />
+              </a>
+              <a href={explorerAddress(l.address!)} target="_blank" rel="noreferrer" className="group inline-flex items-center justify-between rounded-[4px] border border-line px-6 py-4 font-mono text-[13px]">
+                View on Blockscout <Arrow />
+              </a>
+            </div>
+          </div>
+        )}
       </section>
       <Footer />
     </main>

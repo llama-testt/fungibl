@@ -10,6 +10,7 @@ import { NftCard, StoneCoin } from "./art/Objects";
 import { Arrow, Reveal, SectionHead } from "./ui";
 import { WalletButton } from "./WalletButton";
 import { fmtInt } from "@/lib/launches";
+import { FUNGIBL_FACTORY } from "@/lib/fungibl/abi";
 
 const F = { address: PONS_V2_FACTORY, abi: factoryAbi, chainId: robinhood.id } as const;
 
@@ -98,6 +99,7 @@ export function CreateFlow({ index = "05" }: { index?: string }) {
   // collection (preview only for now)
   const [collection, setCollection] = useState("");
   const [supply, setSupply] = useState(1000);
+  const [perNft, setPerNft] = useState(100_000);
   // launch
   const [taxBps, setTaxBps] = useState(100);
   const [buyback, setBuyback] = useState(true);
@@ -147,7 +149,8 @@ export function CreateFlow({ index = "05" }: { index?: string }) {
   const T = (ticker || "TICKER").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 10) || "TICKER";
   const N = name || "Your coin";
   const coinSupply = config ? Number(formatEther(config.supply)) : 1_000_000_000;
-  const ratio = supply > 0 ? Math.round((coinSupply * 0.1) / supply) : 0;
+  const ratio = perNft;
+  const lockShare = (supply * perNft) / coinSupply;
   const wrongChain = isConnected && chainId !== robinhood.id;
   const busy = phase === "uploading" || phase === "checking" || phase === "confirm" || phase === "pending";
 
@@ -197,7 +200,11 @@ export function CreateFlow({ index = "05" }: { index?: string }) {
       if (receipt.status !== "success") throw new Error("Launch transaction reverted.");
       const [ev] = parseEventLogs({ abi: factoryAbi, logs: receipt.logs, eventName: "TokenLaunched" });
       setPhase("done");
-      if (ev) router.push(`/launch/${(ev.args as { token: string }).token.toLowerCase()}`);
+      if (ev) {
+        const token = (ev.args as { token: string }).token.toLowerCase();
+        const q = new URLSearchParams({ c: collection || `${name.trim()} Originals`, s: String(supply), r: String(perNft) });
+        router.push(FUNGIBL_FACTORY ? `/launch/${token}?${q}#collection` : `/launch/${token}`);
+      }
     } catch (e) {
       setPhase("error");
       setMsg(explain(e));
@@ -287,19 +294,33 @@ export function CreateFlow({ index = "05" }: { index?: string }) {
             </div>
           </Step>
 
-          <Step n="02" title="Collection" note="The non-fungible half. Collection contracts are in development — this step is a preview and is not deployed yet." muted>
+          <Step
+            n="02"
+            title="Collection"
+            note={
+              FUNGIBL_FACTORY
+                ? "The non-fungible half. Opened right after your coin launches — one more signature on the next page."
+                : "The non-fungible half. Fungibl collections aren't live on Robinhood Chain yet — this step is a preview."
+            }
+            muted={!FUNGIBL_FACTORY}
+          >
             <Field label="Collection name">
               <input className="field" placeholder={`${N} Originals`} value={collection} onChange={(e) => setCollection(e.target.value)} />
             </Field>
-            <Field label="Supply">
-              <input className="field font-mono" type="number" min={1} value={supply} onChange={(e) => setSupply(Number(e.target.value))} />
+            <Field label="NFT supply" hint="1 – 100,000">
+              <input className="field font-mono" type="number" min={1} max={100000} value={supply} onChange={(e) => setSupply(Math.max(1, Math.floor(Number(e.target.value))))} />
             </Field>
-            <Field label="NFT artwork" hint="Folder or .zip">
-              <Drop text="Coming soon" disabled />
+            <Field label="Coins per NFT" hint={`$${T} locked for each NFT`}>
+              <input className="field font-mono" type="number" min={1} value={perNft} onChange={(e) => setPerNft(Math.max(1, Math.floor(Number(e.target.value))))} />
             </Field>
-            <Field label="Traits" hint="Optional">
-              <Drop text="Coming soon" disabled />
+            <Field label="Artwork" hint="Generated">
+              <div className="field font-mono text-[13px] leading-[1.6] text-muted">
+                Every NFT gets its own stone-mosaic face. You can point the collection at your own IPFS art later.
+              </div>
             </Field>
+            <p className={`font-mono text-[12px] md:col-span-2 ${lockShare > 0.5 ? "text-clay" : "text-muted"}`}>
+              Up to {(lockShare * 100).toFixed(1)}% of ${T} can be locked as NFTs{lockShare > 0.5 ? " — the maximum is 50%." : "."} Ratio and supply are permanent.
+            </p>
           </Step>
 
           <Step n="03" title="Launch" note="Terms are read live from the Pons V2 factory and pinned when you sign, so they can't change underneath you.">
@@ -365,7 +386,7 @@ export function CreateFlow({ index = "05" }: { index?: string }) {
             <dl className="mt-8 space-y-3 border-t border-line pt-5 font-mono text-[12px]">
               {[
                 ["Coin supply", fmtInt(coinSupply)],
-                ["NFT supply", `${fmtInt(supply)} (soon)`],
+                ["NFT supply", fmtInt(supply)],
                 ["Ratio", `${fmtInt(ratio)} : 1`],
                 ["Creator tax", `${(Math.min(taxBps, maxTax) / 100).toFixed(2)}%`],
               ].map(([k, v]) => (

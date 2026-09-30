@@ -2,6 +2,7 @@ import "server-only";
 import { createPublicClient, formatEther, http, type Address } from "viem";
 import { curveAbi, factoryAbi, tokenAbi } from "./abi";
 import { PONS_V2_FACTORY, RPC_URL, robinhood } from "./chain";
+import { FUNGIBL_FACTORY, collectionAbi, fungiblFactoryAbi } from "../fungibl/abi";
 import { launches as demoLaunches, type Backdrop, type Launch, type LaunchStatus } from "../launches";
 
 const client = createPublicClient({
@@ -177,6 +178,65 @@ async function stampTimes(found: Found[]) {
   for (const f of found) f.time = Math.round(tl + ((th - tl) * Number(f.block - lo)) / span);
 }
 
+const ZERO = "0x0000000000000000000000000000000000000000";
+
+/** Fills the collection fields for launches that have a Fungibl collection. */
+async function attachCollections(list: Launch[]): Promise<Launch[]> {
+  if (!FUNGIBL_FACTORY || list.length === 0) return list;
+  try {
+    const cols = await Promise.all(
+      list.map((l) =>
+        client
+          .readContract({ address: FUNGIBL_FACTORY as Address, abi: fungiblFactoryAbi, functionName: "collectionOf", args: [l.address!] })
+          .catch(() => ZERO as Address),
+      ),
+    );
+    return await Promise.all(
+      list.map(async (l, i) => {
+        const c = cols[i];
+        if (!c || c === ZERO) return l;
+        const col = { address: c, abi: collectionAbi } as const;
+        const [name, ratio, maxSupply, minted, inVault] = await Promise.all([
+          client.readContract({ ...col, functionName: "name" }),
+          client.readContract({ ...col, functionName: "ratio" }),
+          client.readContract({ ...col, functionName: "maxSupply" }),
+          client.readContract({ ...col, functionName: "minted" }),
+          client.readContract({ ...col, functionName: "inVault" }),
+        ]);
+        return {
+          ...l,
+          collection: name,
+          collectionAddress: c,
+          ratio: Number(formatEther(ratio)),
+          supply: Number(maxSupply),
+          minted: Number(minted),
+          inVault: Number(inVault),
+        };
+      }),
+    );
+  } catch {
+    return list;
+  }
+}
+
+/** Names used by the NFT metadata endpoint. */
+export async function getCollectionMeta(coin: string) {
+  try {
+    const [coinName, symbol] = await Promise.all([
+      client.readContract({ address: coin as Address, abi: tokenAbi, functionName: "name" }),
+      client.readContract({ address: coin as Address, abi: tokenAbi, functionName: "symbol" }),
+    ]);
+    let name = `${coinName} Collection`;
+    if (FUNGIBL_FACTORY) {
+      const c = await client.readContract({ address: FUNGIBL_FACTORY as Address, abi: fungiblFactoryAbi, functionName: "collectionOf", args: [coin as Address] });
+      if (c && c !== ZERO) name = await client.readContract({ address: c, abi: collectionAbi, functionName: "name" });
+    }
+    return { name, coinName, ticker: symbol.replace(/^\$/, "").toUpperCase() };
+  } catch {
+    return null;
+  }
+}
+
 export type LaunchFeed = { launches: Launch[]; live: boolean; source: "bitquery" | "rpc" | "demo"; error?: string; scanned?: number; enriched?: number };
 
 /** Latest Pons V2 launches, enriched from chain. Falls back to demo data if the chain can't be reached. */
@@ -195,7 +255,7 @@ export async function getLaunchFeed(limit = 24): Promise<LaunchFeed> {
     const enriched = [...ranked.slice(0, limit - newest.length), ...newest].map((l, i) => ({ ...l, index: String(i + 1).padStart(3, "0") }));
     if (enriched.length === 0)
       return { launches: demoLaunches, live: false, source: "demo", error: `no launches enriched (scanned ${found.length})` };
-    return { launches: enriched, live: true, source: bq ? "bitquery" : "rpc", scanned: found.length, enriched: all.length };
+    return { launches: await attachCollections(enriched), live: true, source: bq ? "bitquery" : "rpc", scanned: found.length, enriched: all.length };
   } catch (e) {
     return { launches: demoLaunches, live: false, source: "demo", error: e instanceof Error ? e.message.slice(0, 200) : "unknown" };
   }
@@ -240,9 +300,10 @@ export async function getLaunchByAddress(address: string): Promise<Launch | null
       args: [address as Address],
     });
     if (!rec.exists) return null;
-    return enrich({ token: rec.token, curve: rec.curve, deployer: rec.deployer, block: 0n, time: undefined }, 0).then((l) =>
-      l ? { ...l, launchedAgo: "—" } : null,
-    );
+    const l = await enrich({ token: rec.token, curve: rec.curve, deployer: rec.deployer, block: 0n, time: undefined }, 0);
+    if (!l) return null;
+    const [withCol] = await attachCollections([{ ...l, launchedAgo: "—", feeRecipient: rec.creatorFeeRecipient }]);
+    return withCol;
   } catch {
     return null;
   }
