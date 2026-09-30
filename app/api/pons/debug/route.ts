@@ -23,5 +23,23 @@ export async function GET(req: Request) {
     out.error = e instanceof Error ? e.message.slice(0, 500) : String(e);
   }
   out.ms = Date.now() - t;
+  const tok = (out.first as { token?: `0x${string}` } | null)?.token;
+  if (tok) {
+    const { tokenAbi } = await import("@/lib/pons/abi");
+    const batched = createPublicClient({ chain: robinhood, transport: http(process.env.ROBINHOOD_RPC_URL || RPC_URL, { batch: true }) });
+    for (const [label, c] of [["plain", client], ["batched", batched]] as const) {
+      try {
+        out[label] = await c.readContract({ address: tok, abi: tokenAbi, functionName: "symbol" });
+      } catch (e) {
+        out[label + "Error"] = e instanceof Error ? e.message.slice(0, 300) : String(e);
+      }
+    }
+    try {
+      const code = await client.getCode({ address: "0xcA11bde05977b3631167028862bE2a173976CA11" });
+      out.multicall3 = Boolean(code && code !== "0x");
+    } catch (e) {
+      out.multicall3Error = String(e).slice(0, 200);
+    }
+  }
   return NextResponse.json(out);
 }
