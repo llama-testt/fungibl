@@ -11,7 +11,7 @@ export function FeedBadge({ feed }: { feed: Pick<LaunchFeed, "live"> }) {
       <span className="h-[6px] w-[6px] animate-pulse rounded-full bg-moss" /> Live · Pons V2 · Robinhood Chain
     </span>
   ) : (
-    <span>Sample data · live feed unavailable</span>
+    <span>Sample data</span>
   );
 }
 
