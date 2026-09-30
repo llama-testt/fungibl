@@ -240,26 +240,57 @@ export function HowItWorks() {
   const [reduced, setReduced] = useState(false);
 
   useEffect(() => {
-    setReduced(window.matchMedia("(prefers-reduced-motion: reduce)").matches);
-    let raf = 0;
-    const read = () => {
-      raf = 0;
-      const el = ref.current;
-      if (!el) return;
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    setReduced(reduce);
+    const el = ref.current;
+    if (!el) return;
+
+    // Progress starts while the section is still entering the viewport (LEAD),
+    // so the scene is already moving before it pins — not only once pinned.
+    const LEAD = 0.9;
+    const target = () => {
       const r = el.getBoundingClientRect();
-      const span = r.height - window.innerHeight;
-      const next = clamp(-r.top / (span || 1));
-      setP((prev) => (Math.abs(prev - next) > 0.0015 ? next : prev));
+      const vh = window.innerHeight;
+      const span = r.height - vh;
+      return clamp((vh * LEAD - r.top) / (span + vh * LEAD || 1));
     };
-    const onScroll = () => {
-      if (!raf) raf = requestAnimationFrame(read);
+
+    // A short autoplay intro the first time it appears: the coin rises on its own.
+    let introStart = 0;
+    let intro = 0;
+    const io = new IntersectionObserver(
+      ([e]) => {
+        if (e.isIntersecting && !introStart) introStart = performance.now();
+        visible = e.isIntersecting;
+        if (visible && !raf) raf = requestAnimationFrame(tick);
+      },
+      { rootMargin: "0px 0px -10% 0px" },
+    );
+
+    let visible = false;
+    let raf = 0;
+    let cur = target();
+    // Smoothly follow the scroll position; keeps running only while in view.
+    const tick = (now: number) => {
+      if (introStart) intro = 0.2 * easeOut((now - introStart) / 1600);
+      const goal = Math.max(target(), intro);
+      cur = reduce ? goal : cur + (goal - cur) * 0.12;
+      if (Math.abs(goal - cur) < 0.0005) cur = goal;
+      setP((prev) => (Math.abs(prev - cur) > 0.0008 ? cur : prev));
+      raf = visible || Math.abs(goal - cur) > 0.0005 ? requestAnimationFrame(tick) : 0;
     };
-    read();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    window.addEventListener("resize", onScroll);
+    const kick = () => {
+      if (!raf) raf = requestAnimationFrame(tick);
+    };
+
+    io.observe(el);
+    window.addEventListener("scroll", kick, { passive: true });
+    window.addEventListener("resize", kick);
+    kick();
     return () => {
-      window.removeEventListener("scroll", onScroll);
-      window.removeEventListener("resize", onScroll);
+      io.disconnect();
+      window.removeEventListener("scroll", kick);
+      window.removeEventListener("resize", kick);
       cancelAnimationFrame(raf);
     };
   }, []);
@@ -272,7 +303,7 @@ export function HowItWorks() {
       <SectionHead index="03" label="How Fungibl works" right={<span className="hidden md:inline">Fungible / Non-fungible</span>} />
 
       {/* Desktop: pinned stage, scroll drives the story */}
-      <div ref={ref} className="relative hidden md:block" style={{ height: "340vh" }}>
+      <div ref={ref} className="relative hidden md:block" style={{ height: "300vh" }}>
         <div className="sticky top-0 flex h-screen items-center">
           <div className="grid w-full grid-cols-12 items-center gap-[3vw]">
             <div className="col-span-5 flex flex-col">
