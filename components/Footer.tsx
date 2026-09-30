@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Button, Mark } from "./ui";
 import { SOCIAL } from "@/lib/site";
+import { DotWordmark } from "./DotWordmark";
 
 const PLATE = "/img/hero.jpg";
 
@@ -76,9 +77,7 @@ export function Footer() {
           </p>
         </div>
 
-        <p aria-hidden className="pointer-events-none relative z-0 mt-16 select-none -ml-[0.06em] whitespace-nowrap text-[31vw] font-[560] leading-[0.78] tracking-[-0.075em] text-ink md:mt-24 md:text-[30vw]">
-          Fungibl
-        </p>
+        <DotWordmark className="relative z-0 mt-16 md:mt-24" />
       </div>
     </footer>
   );
