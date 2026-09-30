@@ -1,4 +1,3 @@
-import { CreateFlow } from "@/components/CreateFlow";
 import { Explore } from "@/components/Explore";
 import { Footer } from "@/components/Footer";
 import { Hero } from "@/components/Hero";
@@ -18,7 +17,6 @@ export default async function Home() {
       <Mechanic />
       <HowItWorks />
       <Explore limit={6} launches={feed.launches} live={feed.live} />
-      <CreateFlow />
       <Footer />
     </main>
   );
