@@ -227,12 +227,16 @@ export const fmtPrice = (n: number) => `$${n.toFixed(4)}`;
 export const fmtInt = (n: number) => n.toLocaleString("en-US");
 export const fmtEth = (n: number) => `${n.toFixed(2)} ETH`;
 
-/** Small ETH amounts without scientific notation: 0.00000312 ETH */
+const SUB = "₀₁₂₃₄₅₆₇₈₉";
+/** Small ETH amounts in compact notation: 0.0₇189 ETH (seven zeros, then 189). */
 export const fmtEthPrecise = (n: number) => {
-  if (n === 0) return "0 ETH";
+  if (!n) return "0 ETH";
   if (n >= 1) return `${n.toFixed(2)} ETH`;
-  const digits = Math.min(12, Math.max(2, -Math.floor(Math.log10(n)) + 2));
-  return `${n.toFixed(digits).replace(/0+$/, "")} ETH`;
+  if (n >= 0.001) return `${n.toFixed(4).replace(/0+$/, "")} ETH`;
+  const zeros = -Math.floor(Math.log10(n)) - 1;
+  const digits = Math.round(n * 10 ** (zeros + 3)).toString().slice(0, 3).replace(/0+$/, "");
+  const sub = String(zeros).split("").map((d) => SUB[Number(d)]).join("");
+  return `0.0${sub}${digits} ETH`;
 };
 
 export const dash = "—";
