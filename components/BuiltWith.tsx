@@ -45,7 +45,7 @@ const ITEMS: { name: string; href: string; mark: ReactNode; role: string }[] = [
 
 export function BuiltWith({ className = "" }: { className?: string }) {
   return (
-    <div className={`flex flex-wrap items-center gap-x-3 gap-y-3 ${className}`}>
+    <div className={`flex flex-wrap items-center justify-center gap-x-3 gap-y-3 ${className}`}>
       <span className="mr-2 font-mono text-[11px] uppercase tracking-label text-muted">Built with</span>
       {ITEMS.map((it) => (
         <a
