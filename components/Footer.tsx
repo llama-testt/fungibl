@@ -40,7 +40,7 @@ export function Footer() {
       </div>
 
       <div className="mx-auto max-w-[1680px] px-6 pb-10 pt-20 md:px-[4.2vw]">
-        <div className="grid gap-10 border-t border-line pt-8 font-mono text-[12px] md:grid-cols-12">
+        <div className="relative z-10 grid gap-10 border-t border-line pt-8 font-mono text-[12px] md:grid-cols-12">
           <div className="flex items-start gap-3 md:col-span-4">
             <Mark className="h-5 w-5" />
             <span className="uppercase tracking-label text-muted">Every coin has a face.</span>
@@ -76,7 +76,7 @@ export function Footer() {
           </p>
         </div>
 
-        <p aria-hidden className="mt-16 select-none -ml-[0.06em] whitespace-nowrap text-[31vw] font-[560] leading-[0.78] tracking-[-0.075em] text-ink md:mt-24 md:text-[30vw]">
+        <p aria-hidden className="pointer-events-none relative z-0 mt-16 select-none -ml-[0.06em] whitespace-nowrap text-[31vw] font-[560] leading-[0.78] tracking-[-0.075em] text-ink md:mt-24 md:text-[30vw]">
           Fungibl
         </p>
       </div>
