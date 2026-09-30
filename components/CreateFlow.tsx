@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { BaseError, ContractFunctionRevertedError, formatEther, parseEventLogs, toHex, zeroAddress } from "viem";
 import { useAccount, useChainId, usePublicClient, useReadContract, useReadContracts, useSwitchChain, useWriteContract } from "wagmi";
 import { factoryAbi } from "@/lib/pons/abi";
@@ -43,6 +43,120 @@ function Drop({ text, file, onFile, disabled }: { text: string; file?: File | nu
         onChange={(e) => onFile?.(e.target.files?.[0] ?? null)}
       />
     </label>
+  );
+}
+
+const IMAGE_TYPES = ["image/png", "image/jpeg", "image/gif", "image/webp"];
+
+/** Squares and shrinks stills to at most 1024px WEBP before upload; GIFs pass through. */
+async function prepareImage(file: File): Promise<File> {
+  if (file.type === "image/gif") return file;
+  const bmp = await createImageBitmap(file);
+  const side = Math.min(bmp.width, bmp.height);
+  const out = Math.min(1024, side);
+  if (bmp.width === bmp.height && out === side && file.size < 1024 * 1024) return file;
+  const canvas = document.createElement("canvas");
+  canvas.width = canvas.height = out;
+  const ctx = canvas.getContext("2d")!;
+  ctx.drawImage(bmp, (bmp.width - side) / 2, (bmp.height - side) / 2, side, side, 0, 0, out, out);
+  const blob = await new Promise<Blob | null>((r) => canvas.toBlob(r, "image/webp", 0.9));
+  return blob ? new File([blob], file.name.replace(/\.[^.]+$/, "") + ".webp", { type: "image/webp" }) : file;
+}
+
+/** Drag-and-drop or click to upload; uploads immediately and reports the stored URI. */
+function ImageUpload({ onUri, onBusy, ticker }: { onUri: (uri: string) => void; onBusy: (b: boolean) => void; ticker: string }) {
+  const [preview, setPreview] = useState("");
+  const [state, setState] = useState<"idle" | "uploading" | "done" | "error">("idle");
+  const [err, setErr] = useState("");
+  const [drag, setDrag] = useState(false);
+
+  async function take(f: File | null | undefined) {
+    if (!f) return;
+    setErr("");
+    if (!IMAGE_TYPES.includes(f.type)) return fail("PNG, JPG, GIF or WEBP only.");
+    if (f.size > 4 * 1024 * 1024) return fail("Max 4 MB.");
+    setPreview(URL.createObjectURL(f));
+    setState("uploading");
+    onBusy(true);
+    onUri("");
+    try {
+      const ready = await prepareImage(f);
+      const body = new FormData();
+      body.append("file", ready);
+      const r = await fetch("/api/upload", { method: "POST", body });
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.error || "Upload failed");
+      onUri(j.uri);
+      setState("done");
+    } catch (e) {
+      fail(e instanceof Error ? e.message : "Upload failed");
+    } finally {
+      onBusy(false);
+    }
+  }
+  function fail(m: string) {
+    setErr(m);
+    setState("error");
+    onUri("");
+  }
+  function clear() {
+    setPreview("");
+    setState("idle");
+    setErr("");
+    onUri("");
+  }
+
+  return (
+    <div
+      onDragOver={(e) => {
+        e.preventDefault();
+        setDrag(true);
+      }}
+      onDragLeave={() => setDrag(false)}
+      onDrop={(e) => {
+        e.preventDefault();
+        setDrag(false);
+        take(e.dataTransfer.files?.[0]);
+      }}
+      className={`flex min-h-[148px] items-center gap-6 rounded-[4px] border border-dashed p-5 transition-colors ${
+        drag ? "border-ink bg-paper-deep/60" : "border-ink/30"
+      }`}
+    >
+      <label className="group relative flex h-[108px] w-[108px] shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-full border border-ink/25 bg-paper-deep/50 transition-colors hover:border-ink">
+        {preview ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={preview} alt="" className={`h-full w-full object-cover ${state === "uploading" ? "opacity-50" : ""}`} />
+        ) : (
+          <span className="text-[34px] font-[330] tracking-[-0.04em] text-muted">{ticker[0]}</span>
+        )}
+        <input type="file" accept={IMAGE_TYPES.join(",")} className="hidden" onChange={(e) => take(e.target.files?.[0])} />
+      </label>
+      <div className="font-mono text-[12px] leading-[1.7]">
+        {state === "idle" && (
+          <>
+            <p className="text-ink">Drop an image here, or click the circle.</p>
+            <p className="text-muted">PNG, JPG, GIF or WEBP · square works best · max 4 MB</p>
+          </>
+        )}
+        {state === "uploading" && <p className="text-ink">Uploading…</p>}
+        {state === "done" && (
+          <>
+            <p className="text-ink">✓ Uploaded — this becomes your coin&apos;s logo.</p>
+            <button type="button" onClick={clear} className="u-link text-muted">
+              Remove
+            </button>
+          </>
+        )}
+        {state === "error" && (
+          <>
+            <p className="text-clay">{err}</p>
+            <button type="button" onClick={clear} className="u-link text-muted">
+              Try another file
+            </button>
+          </>
+        )}
+      </div>
+    </div>
   );
 }
 
@@ -91,7 +205,7 @@ export function CreateFlow({ index = "05" }: { index?: string }) {
   const [name, setName] = useState("");
   const [ticker, setTicker] = useState("");
   const [description, setDescription] = useState("");
-  const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [logoBusy, setLogoBusy] = useState(false);
   const [logoUrl, setLogoUrl] = useState("");
   const [website, setWebsite] = useState("");
   const [twitter, setTwitter] = useState("");
@@ -107,14 +221,6 @@ export function CreateFlow({ index = "05" }: { index?: string }) {
   const [phase, setPhase] = useState<Phase>("idle");
   const [msg, setMsg] = useState("");
   const [tx, setTx] = useState<string>("");
-  const [uploadEnabled, setUploadEnabled] = useState(false);
-
-  useEffect(() => {
-    fetch("/api/upload")
-      .then((r) => r.json())
-      .then((j) => setUploadEnabled(Boolean(j.enabled)))
-      .catch(() => {});
-  }, []);
 
   // Live Pons V2 terms
   const { data: base } = useReadContracts({
@@ -164,16 +270,7 @@ export function CreateFlow({ index = "05" }: { index?: string }) {
     try {
       setMsg("");
       setTx("");
-      let logo = logoUrl.trim();
-      if (logoFile && uploadEnabled) {
-        setPhase("uploading");
-        const body = new FormData();
-        body.append("file", logoFile);
-        const r = await fetch("/api/upload", { method: "POST", body });
-        const j = await r.json();
-        if (!r.ok) throw new Error(j.error || "Logo upload failed");
-        logo = j.uri;
-      }
+      const logo = logoUrl;
       setPhase("checking");
       const economics = await client.readContract({ ...F, functionName: "previewLaunchEconomics", args: [config.id, zeroAddress] });
       const salt = toHex(crypto.getRandomValues(new Uint8Array(32)));
@@ -235,7 +332,7 @@ export function CreateFlow({ index = "05" }: { index?: string }) {
     cta = (
       <button
         onClick={launch}
-        disabled={busy || !config || fee == null}
+        disabled={busy || logoBusy || !config || fee == null}
         className="group inline-flex items-center justify-between gap-6 rounded-[4px] bg-charcoal px-7 py-4 font-mono text-[14px] text-paper disabled:opacity-50"
       >
         {busy ? "Launching…" : "Launch on Pons"} <Arrow />
@@ -272,15 +369,9 @@ export function CreateFlow({ index = "05" }: { index?: string }) {
                 onChange={(e) => setDescription(e.target.value)}
               />
             </Field>
-            {uploadEnabled ? (
-              <Field label="Image" span={2} hint="PNG, JPG, GIF, WEBP · 1:1 · max 4 MB · pinned to IPFS">
-                <Drop text="Drop coin image" file={logoFile} onFile={setLogoFile} />
-              </Field>
-            ) : (
-              <Field label="Image URL" span={2} hint="ipfs:// preferred">
-                <input className="field font-mono text-[14px]" placeholder="ipfs://…" value={logoUrl} onChange={(e) => setLogoUrl(e.target.value)} />
-              </Field>
-            )}
+            <Field label="Image" span={2} hint="Your coin's logo">
+              <ImageUpload onUri={setLogoUrl} onBusy={setLogoBusy} ticker={T} />
+            </Field>
             <div className="grid gap-7 md:col-span-2 md:grid-cols-3">
               <Field label="Website" hint="Optional">
                 <input className="field text-[15px]" placeholder="https://" value={website} onChange={(e) => setWebsite(e.target.value)} />
