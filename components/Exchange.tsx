@@ -12,7 +12,7 @@ import { fmtInt, type Launch } from "@/lib/launches";
 export function Exchange({ launch: l, compact = false }: { launch: Launch; compact?: boolean }) {
   const [dir, setDir] = useState<"toNft" | "toCoin">("toNft");
   const [qty, setQty] = useState(1);
-  const coins = l.ratio * qty;
+  const coins = (l.ratio ?? 0) * qty;
   const left = remaining(l);
 
   const coinSide = (
@@ -97,5 +97,5 @@ export function Exchange({ launch: l, compact = false }: { launch: Launch; compa
 }
 
 function remaining(l: Launch) {
-  return Math.max(0, l.supply - l.minted);
+  return Math.max(0, (l.supply ?? 0) - (l.minted ?? 0));
 }

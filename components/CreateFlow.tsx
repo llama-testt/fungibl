@@ -1,14 +1,22 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useRouter } from "next/navigation";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { BaseError, ContractFunctionRevertedError, formatEther, parseEventLogs, toHex, zeroAddress } from "viem";
+import { useAccount, useChainId, usePublicClient, useReadContract, useReadContracts, useSwitchChain, useWriteContract } from "wagmi";
+import { factoryAbi } from "@/lib/pons/abi";
+import { PONS_V2_FACTORY, explorerTx, robinhood } from "@/lib/pons/chain";
 import { NftCard, StoneCoin } from "./art/Objects";
 import { Arrow, Reveal, SectionHead } from "./ui";
+import { WalletButton } from "./WalletButton";
 import { fmtInt } from "@/lib/launches";
+
+const F = { address: PONS_V2_FACTORY, abi: factoryAbi, chainId: robinhood.id } as const;
 
 function Field({ label, children, span = 1, hint }: { label: string; children: ReactNode; span?: 1 | 2; hint?: string }) {
   return (
     <label className={`block ${span === 2 ? "md:col-span-2" : ""}`}>
-      <span className="label flex justify-between">
+      <span className="label flex justify-between gap-4">
         {label}
         {hint && <span className="normal-case tracking-normal text-muted/70">{hint}</span>}
       </span>
@@ -17,16 +25,27 @@ function Field({ label, children, span = 1, hint }: { label: string; children: R
   );
 }
 
-function Drop({ text }: { text: string }) {
+function Drop({ text, file, onFile, disabled }: { text: string; file?: File | null; onFile?: (f: File | null) => void; disabled?: boolean }) {
   return (
-    <div className="flex h-[132px] cursor-pointer flex-col items-center justify-center gap-2 rounded-[4px] border border-dashed border-ink/30 font-mono text-[12px] text-muted transition-colors hover:border-ink hover:text-ink">
-      <span className="text-[20px] leading-none">+</span>
-      {text}
-    </div>
+    <label
+      className={`flex h-[132px] flex-col items-center justify-center gap-2 rounded-[4px] border border-dashed border-ink/30 font-mono text-[12px] text-muted transition-colors ${
+        disabled ? "cursor-not-allowed opacity-50" : "cursor-pointer hover:border-ink hover:text-ink"
+      }`}
+    >
+      <span className="text-[20px] leading-none">{file ? "✓" : "+"}</span>
+      {file ? file.name : text}
+      <input
+        type="file"
+        accept="image/png,image/jpeg,image/gif,image/webp"
+        className="hidden"
+        disabled={disabled}
+        onChange={(e) => onFile?.(e.target.files?.[0] ?? null)}
+      />
+    </label>
   );
 }
 
-function Step({ n, title, note, children }: { n: string; title: string; note: string; children: ReactNode }) {
+function Step({ n, title, note, children, muted }: { n: string; title: string; note: string; children: ReactNode; muted?: boolean }) {
   return (
     <Reveal className="grid gap-8 border-t border-line py-12 md:grid-cols-[minmax(180px,0.8fr)_2fr] md:gap-[3vw] md:py-16">
       <div>
@@ -34,26 +53,191 @@ function Step({ n, title, note, children }: { n: string; title: string; note: st
         <h3 className="mt-3 text-[44px] font-[330] leading-none tracking-tightest md:text-[clamp(44px,4vw,68px)]">{title}</h3>
         <p className="mt-4 max-w-[20em] font-mono text-[12px] leading-[1.7] text-muted">{note}</p>
       </div>
-      <div className="grid gap-7 md:grid-cols-2">{children}</div>
+      <div className={`grid gap-7 md:grid-cols-2 ${muted ? "opacity-55" : ""}`}>{children}</div>
     </Reveal>
   );
 }
 
+type Phase = "idle" | "uploading" | "checking" | "confirm" | "pending" | "done" | "error";
+
+function explain(e: unknown) {
+  if (e instanceof BaseError) {
+    const revert = e.walk((x) => x instanceof ContractFunctionRevertedError) as ContractFunctionRevertedError | null;
+    const name = revert?.data?.errorName;
+    const map: Record<string, string> = {
+      NotWhitelisted: "Pons launches are whitelist-only right now.",
+      LaunchFeeNotPaid: "Launch fee changed — refresh and try again.",
+      CreatorTaxTooHigh: "Creator tax is above the Pons maximum.",
+      LaunchEconomicsMismatch: "Pons updated its launch terms a moment ago. Try again.",
+      LaunchConfigDisabled: "This Pons launch config is disabled.",
+      InvalidTokenParams: "Name and ticker are required.",
+    };
+    if (name && map[name]) return map[name];
+    return e.shortMessage;
+  }
+  return e instanceof Error ? e.message.split("\n")[0] : "Something went wrong.";
+}
+
 export function CreateFlow({ index = "05" }: { index?: string }) {
+  const router = useRouter();
+  const { address, isConnected } = useAccount();
+  const chainId = useChainId();
+  const { switchChain } = useSwitchChain();
+  const client = usePublicClient({ chainId: robinhood.id });
+  const { writeContractAsync } = useWriteContract();
+
+  // coin
   const [name, setName] = useState("");
   const [ticker, setTicker] = useState("");
+  const [description, setDescription] = useState("");
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [logoUrl, setLogoUrl] = useState("");
+  const [website, setWebsite] = useState("");
+  const [twitter, setTwitter] = useState("");
+  const [telegram, setTelegram] = useState("");
+  // collection (preview only for now)
   const [collection, setCollection] = useState("");
   const [supply, setSupply] = useState(1000);
-  const [initial, setInitial] = useState(1_000_000_000);
-  const [rewards, setRewards] = useState(2);
+  // launch
+  const [taxBps, setTaxBps] = useState(100);
+  const [buyback, setBuyback] = useState(true);
 
-  const ratio = supply > 0 ? Math.round((initial * 0.1) / supply) : 0; // 10% of supply backs the vault
-  const T = (ticker || "TICKER").toUpperCase().slice(0, 6);
+  const [phase, setPhase] = useState<Phase>("idle");
+  const [msg, setMsg] = useState("");
+  const [tx, setTx] = useState<string>("");
+  const [uploadEnabled, setUploadEnabled] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/upload")
+      .then((r) => r.json())
+      .then((j) => setUploadEnabled(Boolean(j.enabled)))
+      .catch(() => {});
+  }, []);
+
+  // Live Pons V2 terms
+  const { data: base } = useReadContracts({
+    contracts: [
+      { ...F, functionName: "launchFee" },
+      { ...F, functionName: "launchEnabled" },
+      { ...F, functionName: "maxCreatorTaxBps" },
+      { ...F, functionName: "launchConfigCount" },
+    ],
+  });
+  const fee = base?.[0].result as bigint | undefined;
+  const publicGate = base?.[1].result as boolean | undefined;
+  const maxTax = Number((base?.[2].result as bigint | undefined) ?? 1000n);
+  const count = Number((base?.[3].result as bigint | undefined) ?? 0n);
+
+  const { data: cfgs } = useReadContracts({
+    contracts: Array.from({ length: count }, (_, i) => ({ ...F, functionName: "getLaunchConfig" as const, args: [BigInt(i)] as const })),
+    query: { enabled: count > 0 },
+  });
+  const config = useMemo(() => {
+    if (!cfgs) return null;
+    // newest enabled native-ETH config
+    for (let i = cfgs.length - 1; i >= 0; i--) {
+      const c = cfgs[i].result as { supply: bigint; graduationThreshold: bigint; curveFeeBps: bigint; enabled: boolean } | undefined;
+      if (c?.enabled) return { id: BigInt(i), ...c };
+    }
+    return null;
+  }, [cfgs]);
+
+  const { data: allowed } = useReadContract({ ...F, functionName: "canLaunch", args: [address ?? zeroAddress], query: { enabled: Boolean(address) } });
+
+  const T = (ticker || "TICKER").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 10) || "TICKER";
   const N = name || "Your coin";
+  const coinSupply = config ? Number(formatEther(config.supply)) : 1_000_000_000;
+  const ratio = supply > 0 ? Math.round((coinSupply * 0.1) / supply) : 0;
+  const wrongChain = isConnected && chainId !== robinhood.id;
+  const busy = phase === "uploading" || phase === "checking" || phase === "confirm" || phase === "pending";
+
+  async function launch() {
+    if (!address || !client || !config || fee == null) return;
+    if (!name.trim() || !ticker.trim()) {
+      setPhase("error");
+      setMsg("Name and ticker are required.");
+      return;
+    }
+    try {
+      setMsg("");
+      setTx("");
+      let logo = logoUrl.trim();
+      if (logoFile && uploadEnabled) {
+        setPhase("uploading");
+        const body = new FormData();
+        body.append("file", logoFile);
+        const r = await fetch("/api/upload", { method: "POST", body });
+        const j = await r.json();
+        if (!r.ok) throw new Error(j.error || "Logo upload failed");
+        logo = j.uri;
+      }
+      setPhase("checking");
+      const economics = await client.readContract({ ...F, functionName: "previewLaunchEconomics", args: [config.id, zeroAddress] });
+      const salt = toHex(crypto.getRandomValues(new Uint8Array(32)));
+      const params = {
+        name: name.trim(),
+        symbol: T,
+        logo,
+        description: description.trim(),
+        socials: { twitter: twitter.trim(), telegram: telegram.trim(), discord: "", website: website.trim(), farcaster: "" },
+        creatorFeeRecipient: address,
+        creatorTaxBps: Math.min(taxBps, maxTax),
+        buybackEnabled: buyback,
+        expectedEconomics: economics,
+        salt,
+      } as const;
+      const args = [params, config.id, zeroAddress] as const;
+      // Dry-run first so reverts surface as readable errors, not a failed tx.
+      await client.simulateContract({ ...F, functionName: "launchToken", args, value: fee, account: address });
+      setPhase("confirm");
+      const hash = await writeContractAsync({ ...F, functionName: "launchToken", args, value: fee });
+      setTx(hash);
+      setPhase("pending");
+      const receipt = await client.waitForTransactionReceipt({ hash });
+      if (receipt.status !== "success") throw new Error("Launch transaction reverted.");
+      const [ev] = parseEventLogs({ abi: factoryAbi, logs: receipt.logs, eventName: "TokenLaunched" });
+      setPhase("done");
+      if (ev) router.push(`/launch/${(ev.args as { token: string }).token.toLowerCase()}`);
+    } catch (e) {
+      setPhase("error");
+      setMsg(explain(e));
+    }
+  }
+
+  const status: Record<Phase, string> = {
+    idle: "",
+    uploading: "Pinning your logo to IPFS…",
+    checking: "Checking launch terms with Pons…",
+    confirm: "Confirm the launch in your wallet.",
+    pending: "Launching on Robinhood Chain…",
+    done: "Launched. Opening your coin…",
+    error: msg,
+  };
+
+  let cta: ReactNode;
+  if (!isConnected) cta = <WalletButton variant="paper" />;
+  else if (wrongChain)
+    cta = (
+      <button onClick={() => switchChain({ chainId: robinhood.id })} className="group inline-flex items-center justify-between gap-6 rounded-[4px] bg-charcoal px-7 py-4 font-mono text-[14px] text-paper">
+        Switch to Robinhood Chain <Arrow />
+      </button>
+    );
+  else if (allowed === false)
+    cta = <span className="font-mono text-[12px] text-muted">Pons launches are whitelist-only right now{publicGate === false ? " (public gate closed)" : ""}.</span>;
+  else
+    cta = (
+      <button
+        onClick={launch}
+        disabled={busy || !config || fee == null}
+        className="group inline-flex items-center justify-between gap-6 rounded-[4px] bg-charcoal px-7 py-4 font-mono text-[14px] text-paper disabled:opacity-50"
+      >
+        {busy ? "Launching…" : "Launch on Pons"} <Arrow />
+      </button>
+    );
 
   return (
     <section id="create" className="mx-auto max-w-[1680px] px-6 pt-28 md:px-[4.2vw] md:pt-[11vw]">
-      <SectionHead index={index} label="Create" right={<span className="hidden md:inline">Three steps. One object.</span>} />
+      <SectionHead index={index} label="Create" right={<span className="hidden md:inline">Launched through Pons V2 · Robinhood Chain</span>} />
 
       <div className="mt-10 grid gap-8 md:mt-14 md:grid-cols-12">
         <h2 className="text-[44px] font-[330] leading-[0.98] tracking-tightest md:col-span-8 md:text-[clamp(48px,5.4vw,96px)]">
@@ -65,22 +249,45 @@ export function CreateFlow({ index = "05" }: { index?: string }) {
 
       <div className="mt-14 grid gap-12 lg:grid-cols-[1fr_340px] lg:gap-[4vw]">
         <form onSubmit={(e) => e.preventDefault()}>
-          <Step n="01" title="Coin" note="The fungible half. Name it like you mean it.">
+          <Step n="01" title="Coin" note="The fungible half. Deployed as a Pons V2 token with its own bonding curve.">
             <Field label="Name">
-              <input className="field" placeholder="Super Inu" value={name} onChange={(e) => setName(e.target.value)} />
+              <input className="field" placeholder="Super Inu" maxLength={40} value={name} onChange={(e) => setName(e.target.value)} />
             </Field>
             <Field label="Ticker">
-              <input className="field font-mono uppercase" placeholder="SUPER" maxLength={6} value={ticker} onChange={(e) => setTicker(e.target.value)} />
+              <input className="field font-mono uppercase" placeholder="SUPER" maxLength={10} value={ticker} onChange={(e) => setTicker(e.target.value)} />
             </Field>
             <Field label="Description" span={2}>
-              <textarea className="field min-h-[120px] resize-none" placeholder="What is this, and why should anyone hold it?" />
+              <textarea
+                className="field min-h-[120px] resize-none"
+                maxLength={500}
+                placeholder="What is this, and why should anyone hold it?"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+              />
             </Field>
-            <Field label="Image" span={2} hint="PNG, JPG, GIF · 1:1">
-              <Drop text="Drop coin image" />
-            </Field>
+            {uploadEnabled ? (
+              <Field label="Image" span={2} hint="PNG, JPG, GIF, WEBP · 1:1 · max 4 MB · pinned to IPFS">
+                <Drop text="Drop coin image" file={logoFile} onFile={setLogoFile} />
+              </Field>
+            ) : (
+              <Field label="Image URL" span={2} hint="ipfs:// preferred">
+                <input className="field font-mono text-[14px]" placeholder="ipfs://…" value={logoUrl} onChange={(e) => setLogoUrl(e.target.value)} />
+              </Field>
+            )}
+            <div className="grid gap-7 md:col-span-2 md:grid-cols-3">
+              <Field label="Website" hint="Optional">
+                <input className="field text-[15px]" placeholder="https://" value={website} onChange={(e) => setWebsite(e.target.value)} />
+              </Field>
+              <Field label="X" hint="Optional">
+                <input className="field text-[15px]" placeholder="@handle" value={twitter} onChange={(e) => setTwitter(e.target.value)} />
+              </Field>
+              <Field label="Telegram" hint="Optional">
+                <input className="field text-[15px]" placeholder="t.me/…" value={telegram} onChange={(e) => setTelegram(e.target.value)} />
+              </Field>
+            </div>
           </Step>
 
-          <Step n="02" title="Collection" note="The non-fungible half. Every coin gets a face.">
+          <Step n="02" title="Collection" note="The non-fungible half. Collection contracts are in development — this step is a preview and is not deployed yet." muted>
             <Field label="Collection name">
               <input className="field" placeholder={`${N} Originals`} value={collection} onChange={(e) => setCollection(e.target.value)} />
             </Field>
@@ -88,36 +295,56 @@ export function CreateFlow({ index = "05" }: { index?: string }) {
               <input className="field font-mono" type="number" min={1} value={supply} onChange={(e) => setSupply(Number(e.target.value))} />
             </Field>
             <Field label="NFT artwork" hint="Folder or .zip">
-              <Drop text="Drop artwork" />
+              <Drop text="Coming soon" disabled />
             </Field>
             <Field label="Traits" hint="Optional">
-              <Drop text="Drop traits.json" />
+              <Drop text="Coming soon" disabled />
             </Field>
           </Step>
 
-          <Step n="03" title="Launch" note="Set the ratio once. It holds for the life of the project.">
-            <Field label="Initial supply">
-              <input className="field font-mono" type="number" value={initial} onChange={(e) => setInitial(Number(e.target.value))} />
+          <Step n="03" title="Launch" note="Terms are read live from the Pons V2 factory and pinned when you sign, so they can't change underneath you.">
+            <Field label="Coin supply" hint="Set by Pons">
+              <div className="field font-mono text-muted">{fmtInt(coinSupply)}</div>
             </Field>
-            <Field label="NFT conversion ratio" hint="Coins per NFT">
-              <div className="field flex items-center justify-between font-mono">
-                <span>{fmtInt(ratio)}</span>
-                <span className="text-[12px] text-muted">${T} = 1 NFT</span>
+            <Field label="Graduates at" hint="Then a locked Uniswap V4 pool">
+              <div className="field font-mono text-muted">{config ? `${Number(formatEther(config.graduationThreshold))} ETH` : "…"}</div>
+            </Field>
+            <Field label="Creator tax" hint={`Paid to you on every trade · max ${maxTax / 100}%`} span={2}>
+              <div className="flex items-center gap-6">
+                <input
+                  type="range"
+                  min={0}
+                  max={maxTax}
+                  step={25}
+                  value={Math.min(taxBps, maxTax)}
+                  onChange={(e) => setTaxBps(Number(e.target.value))}
+                  className="w-full accent-[#20201E]"
+                />
+                <span className="w-16 text-right font-mono text-[15px]">{(Math.min(taxBps, maxTax) / 100).toFixed(2)}%</span>
               </div>
             </Field>
-            <Field label="Rewards" hint="% of trading fees to holders" span={2}>
-              <div className="flex items-center gap-6">
-                <input type="range" min={0} max={5} step={0.5} value={rewards} onChange={(e) => setRewards(Number(e.target.value))} className="w-full accent-[#20201E]" />
-                <span className="w-14 text-right font-mono text-[15px]">{rewards}%</span>
+            <Field label="Buyback & lock" hint="Part of fees buy back and lock your coin" span={2}>
+              <div className="flex gap-6 font-mono text-[13px] uppercase tracking-label">
+                {[true, false].map((v) => (
+                  <button key={String(v)} type="button" onClick={() => setBuyback(v)} className={`u-link ${buyback === v ? "![background-size:100%_1px] text-ink" : "text-muted"}`}>
+                    {v ? "On" : "Off"}
+                  </button>
+                ))}
               </div>
             </Field>
           </Step>
 
           <div className="flex flex-col gap-4 border-t border-line pt-8 md:flex-row md:items-center md:justify-between">
-            <p className="font-mono text-[12px] text-muted">Launch fee 0.02 ETH · Coin and collection deploy in one transaction.</p>
-            <button className="group inline-flex items-center justify-between gap-6 rounded-[4px] bg-charcoal px-7 py-4 font-mono text-[14px] text-paper">
-              Review launch <Arrow />
-            </button>
+            <div className="font-mono text-[12px] leading-[1.7] text-muted">
+              <p>Launch fee {fee != null ? `${formatEther(fee)} ETH` : "…"} + gas · signed from your wallet · Pons V2 on Robinhood Chain.</p>
+              {status[phase] && <p className={phase === "error" ? "text-clay" : "text-ink"}>{status[phase]}</p>}
+              {tx && (
+                <a href={explorerTx(tx)} target="_blank" rel="noreferrer" className="u-link text-ink">
+                  View transaction ↗
+                </a>
+              )}
+            </div>
+            {cta}
           </div>
         </form>
 
@@ -137,10 +364,10 @@ export function CreateFlow({ index = "05" }: { index?: string }) {
             </p>
             <dl className="mt-8 space-y-3 border-t border-line pt-5 font-mono text-[12px]">
               {[
-                ["Coin supply", fmtInt(initial)],
-                ["NFT supply", fmtInt(supply)],
+                ["Coin supply", fmtInt(coinSupply)],
+                ["NFT supply", `${fmtInt(supply)} (soon)`],
                 ["Ratio", `${fmtInt(ratio)} : 1`],
-                ["Holder rewards", `${rewards}%`],
+                ["Creator tax", `${(Math.min(taxBps, maxTax) / 100).toFixed(2)}%`],
               ].map(([k, v]) => (
                 <div key={k} className="flex justify-between">
                   <dt className="text-muted">{k}</dt>

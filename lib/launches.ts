@@ -10,19 +10,30 @@ export type Launch = {
   ticker: string;
   collection: string;
   status: LaunchStatus;
-  price: number; // USD per coin
-  marketCap: number; // USD
-  floor: number; // ETH
-  supply: number; // NFT supply
-  minted: number;
-  holders: number;
-  ratio: number; // coins per 1 NFT
+  /** "demo" = illustrative sample data, "pons" = live Pons V2 launch on Robinhood Chain */
+  source: "demo" | "pons";
+  price: number; // demo: USD per coin · pons: ETH per coin (spot on the curve)
+  marketCap: number; // demo: USD · pons: ETH
+  floor: number | null; // ETH — null until the collection is live
+  supply: number | null; // NFT supply
+  minted: number | null;
+  holders: number | null;
+  ratio: number | null; // coins per 1 NFT
   progress: number; // bonding progress 0–100
   backdrop: Backdrop;
   seed: number; // pixel character seed
   palette: number; // index into NFT palettes
   blurb: string;
   launchedAgo: string;
+  // live-only fields
+  address?: `0x${string}`;
+  curve?: `0x${string}`;
+  deployer?: `0x${string}`;
+  logo?: string;
+  raisedEth?: number;
+  thresholdEth?: number;
+  graduated?: boolean;
+  launchedAt?: number; // unix seconds
 };
 
 export const launches: Launch[] = [
@@ -33,6 +44,7 @@ export const launches: Launch[] = [
     ticker: "SUPER",
     collection: "Super Inu Originals",
     status: "live",
+    source: "demo",
     price: 0.0042,
     marketCap: 320_000,
     floor: 0.42,
@@ -54,6 +66,7 @@ export const launches: Launch[] = [
     ticker: "MOTH",
     collection: "Moth Club Members",
     status: "trending",
+    source: "demo",
     price: 0.0118,
     marketCap: 1_180_000,
     floor: 0.91,
@@ -75,6 +88,7 @@ export const launches: Launch[] = [
     ticker: "HRSE",
     collection: "Quiet Horses",
     status: "new",
+    source: "demo",
     price: 0.0009,
     marketCap: 64_000,
     floor: 0.08,
@@ -96,6 +110,7 @@ export const launches: Launch[] = [
     ticker: "PBBL",
     collection: "The Pebbles",
     status: "graduated",
+    source: "demo",
     price: 0.031,
     marketCap: 4_200_000,
     floor: 1.64,
@@ -117,6 +132,7 @@ export const launches: Launch[] = [
     ticker: "MODEM",
     collection: "56k Faces",
     status: "live",
+    source: "demo",
     price: 0.0021,
     marketCap: 188_000,
     floor: 0.19,
@@ -138,6 +154,7 @@ export const launches: Launch[] = [
     ticker: "GECKO",
     collection: "Gecko Reliquary",
     status: "trending",
+    source: "demo",
     price: 0.0074,
     marketCap: 740_000,
     floor: 0.55,
@@ -159,6 +176,7 @@ export const launches: Launch[] = [
     ticker: "WTHR",
     collection: "Forecasts",
     status: "new",
+    source: "demo",
     price: 0.0004,
     marketCap: 31_000,
     floor: 0.04,
@@ -180,6 +198,7 @@ export const launches: Launch[] = [
     ticker: "SGNL",
     collection: "Transmissions",
     status: "graduated",
+    source: "demo",
     price: 0.022,
     marketCap: 2_600_000,
     floor: 1.12,
@@ -196,7 +215,7 @@ export const launches: Launch[] = [
   },
 ];
 
-export const getLaunch = (id: string) => launches.find((l) => l.id === id);
+export const getDemoLaunch = (id: string) => launches.find((l) => l.id === id);
 
 export const fmtUsd = (n: number) => {
   if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(n >= 10_000_000 ? 0 : 2).replace(/\.?0+$/, "")}M`;
@@ -207,3 +226,19 @@ export const fmtUsd = (n: number) => {
 export const fmtPrice = (n: number) => `$${n.toFixed(4)}`;
 export const fmtInt = (n: number) => n.toLocaleString("en-US");
 export const fmtEth = (n: number) => `${n.toFixed(2)} ETH`;
+
+/** Small ETH amounts without scientific notation: 0.00000312 ETH */
+export const fmtEthPrecise = (n: number) => {
+  if (n === 0) return "0 ETH";
+  if (n >= 1) return `${n.toFixed(2)} ETH`;
+  const digits = Math.min(12, Math.max(2, -Math.floor(Math.log10(n)) + 2));
+  return `${n.toFixed(digits).replace(/0+$/, "")} ETH`;
+};
+
+export const dash = "—";
+export const coinPrice = (l: Launch) => (l.source === "pons" ? (l.graduated ? "On V4" : fmtEthPrecise(l.price)) : fmtPrice(l.price));
+export const coinMcap = (l: Launch) => (l.source === "pons" ? (l.graduated ? dash : fmtEthPrecise(l.marketCap)) : fmtUsd(l.marketCap));
+export const nftFloor = (l: Launch) => (l.floor == null ? dash : fmtEth(l.floor));
+export const nftSupply = (l: Launch) => (l.supply == null ? dash : fmtInt(l.supply));
+export const holders = (l: Launch) => (l.holders == null ? dash : fmtInt(l.holders));
+export const mintedLine = (l: Launch) => (l.minted == null || l.supply == null ? "Collection soon" : `${fmtInt(l.minted)} / ${fmtInt(l.supply)}`);

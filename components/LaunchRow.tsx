@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { PairArt } from "./art/PairArt";
 import { Arrow } from "./ui";
-import { fmtInt, fmtPrice, fmtUsd, type Launch } from "@/lib/launches";
+import { coinMcap, coinPrice, holders, mintedLine, type Launch } from "@/lib/launches";
 
 export function Progress({ value, className = "" }: { value: number; className?: string }) {
   return (
@@ -37,19 +37,19 @@ export function LaunchRow({ launch: l }: { launch: Launch }) {
       <dl className="col-span-2 grid grid-cols-3 gap-4 font-mono text-[12px] md:contents">
         <div>
           <dt className="label">Coin</dt>
-          <dd className="mt-2 text-ink">{fmtPrice(l.price)}</dd>
-          <dd className="text-muted">MC {fmtUsd(l.marketCap)}</dd>
+          <dd className="mt-2 break-all text-ink">{coinPrice(l)}</dd>
+          <dd className="text-muted">MC {coinMcap(l)}</dd>
         </div>
         <div>
-          <dt className="label">Collection</dt>
+          <dt className="label">{l.source === "pons" ? "Launch" : "Collection"}</dt>
           <dd className="mt-2 text-ink">
-            {fmtInt(l.minted)} / {fmtInt(l.supply)} <span className="text-muted">minted</span>
+            {l.source === "pons" ? `Curve ${l.progress}%` : <>{mintedLine(l)} <span className="text-muted">minted</span></>}
           </dd>
-          <Progress value={(l.minted / l.supply) * 100} className="mt-3 max-w-[180px]" />
+          <Progress value={l.source === "pons" ? l.progress : ((l.minted ?? 0) / (l.supply || 1)) * 100} className="mt-3 max-w-[180px]" />
         </div>
         <div>
-          <dt className="label">Holders</dt>
-          <dd className="mt-2 text-ink">{fmtInt(l.holders)}</dd>
+          <dt className="label">{l.source === "pons" ? "Launched" : "Holders"}</dt>
+          <dd className="mt-2 text-ink">{l.source === "pons" ? `${l.launchedAgo} ago` : holders(l)}</dd>
         </div>
       </dl>
 

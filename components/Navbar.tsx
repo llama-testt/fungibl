@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { Arrow } from "./ui";
+import { WalletButton } from "./WalletButton";
 
 const LINKS = [
   { href: "/#launches", label: "Launches" },
@@ -49,9 +49,7 @@ export function Navbar({ variant = "overlay" }: { variant?: "overlay" | "paper" 
           <button aria-label="Search launches" className="text-ink/85 transition-opacity hover:opacity-60">
             <SearchIcon />
           </button>
-          <button className="group inline-flex items-center gap-3 rounded-[5px] border border-paper-light bg-paper-light/95 px-7 py-[15px] font-mono text-[14px] text-ink shadow-[0_1px_0_rgba(255,255,255,0.6)_inset,0_6px_18px_-10px_rgba(60,40,15,0.5)] transition-colors hover:bg-paper-light">
-            Connect Wallet <Arrow />
-          </button>
+          <WalletButton variant={variant === "overlay" ? "overlay" : "paper"} />
         </div>
 
         <button
@@ -77,7 +75,9 @@ export function Navbar({ variant = "overlay" }: { variant?: "overlay" | "paper" 
               </li>
             ))}
           </ul>
-          <button className="mt-5 w-full rounded-[4px] bg-charcoal py-4 font-mono text-[14px] text-paper">Connect Wallet →</button>
+          <div className="mt-5">
+            <WalletButton variant="block" />
+          </div>
         </div>
       )}
     </header>

@@ -2,16 +2,31 @@ import Link from "next/link";
 import { PairArt } from "./art/PairArt";
 import { LaunchRow, Progress } from "./LaunchRow";
 import { Arrow, Reveal, SectionHead } from "./ui";
-import { fmtInt, fmtPrice, fmtUsd, launches } from "@/lib/launches";
+import { coinMcap, coinPrice, fmtEthPrecise, fmtInt, holders, type Launch } from "@/lib/launches";
+import type { LaunchFeed } from "@/lib/pons/server";
 
-export function LaunchGallery() {
-  const featured = launches[0];
-  const rows = launches.filter((l) => l.status !== "graduated").slice(1, 5);
-  const f = featured;
+export function FeedBadge({ feed }: { feed: Pick<LaunchFeed, "live"> }) {
+  return feed.live ? (
+    <span className="inline-flex items-center gap-2">
+      <span className="h-[6px] w-[6px] animate-pulse rounded-full bg-moss" /> Live · Pons V2 · Robinhood Chain
+    </span>
+  ) : (
+    <span>Sample data · live feed unavailable</span>
+  );
+}
+
+const byMomentum = (a: Launch, b: Launch) => b.progress - a.progress;
+
+export function LaunchGallery({ feed }: { feed: LaunchFeed }) {
+  const all = feed.launches;
+  const open = all.filter((l) => l.status !== "graduated");
+  const f = feed.live ? [...open].sort(byMomentum)[0] ?? all[0] : all[0];
+  const rows = open.filter((l) => l.id !== f.id).slice(0, 4);
+  const pons = f.source === "pons";
 
   return (
     <section id="launches" className="mx-auto max-w-[1680px] px-6 pt-28 md:px-[4.2vw] md:pt-[11vw]">
-      <SectionHead index="01" label="Live launches" right={<span className="hidden md:inline">Coin + collection, launched together</span>} />
+      <SectionHead index="01" label="Live launches" right={<FeedBadge feed={feed} />} />
 
       <Reveal className="mt-10 grid gap-8 md:mt-14 md:grid-cols-12">
         <h2 className="text-[44px] font-[330] leading-[0.98] tracking-tightest md:col-span-7 md:text-[clamp(48px,5.4vw,96px)]">
@@ -34,7 +49,7 @@ export function LaunchGallery() {
         <div className="flex flex-col md:col-span-5">
           <div className="flex items-center justify-between border-b border-line pb-4 font-mono text-[11px] uppercase tracking-label">
             <span className="flex items-center gap-2">
-              <span className="h-[6px] w-[6px] rounded-full bg-ink" /> Live / {f.index}
+              <span className="h-[6px] w-[6px] rounded-full bg-ink" /> {f.status} / {f.index}
             </span>
             <span className="text-muted">Launched {f.launchedAgo} ago</span>
           </div>
@@ -46,16 +61,25 @@ export function LaunchGallery() {
           <div className="mt-10 grid grid-cols-2 border-t border-line">
             <div className="border-r border-line py-6 pr-6">
               <p className="label">Coin</p>
-              <p className="mt-3 text-[34px] tracking-[-0.03em]">{fmtPrice(f.price)}</p>
-              <p className="mt-1 font-mono text-[12px] text-muted">Market cap {fmtUsd(f.marketCap)}</p>
+              <p className="mt-3 break-all text-[clamp(22px,2.4vw,34px)] tracking-[-0.03em]">{coinPrice(f)}</p>
+              <p className="mt-1 font-mono text-[12px] text-muted">Market cap {coinMcap(f)}</p>
             </div>
             <div className="py-6 pl-6">
               <p className="label">Collection</p>
-              <p className="mt-3 text-[34px] tracking-[-0.03em]">
-                {fmtInt(f.minted)}
-                <span className="text-muted"> / {fmtInt(f.supply)}</span>
-              </p>
-              <p className="mt-1 font-mono text-[12px] text-muted">Minted · floor {f.floor} ETH</p>
+              {f.minted != null && f.supply != null ? (
+                <>
+                  <p className="mt-3 text-[34px] tracking-[-0.03em]">
+                    {fmtInt(f.minted)}
+                    <span className="text-muted"> / {fmtInt(f.supply)}</span>
+                  </p>
+                  <p className="mt-1 font-mono text-[12px] text-muted">Minted · floor {f.floor} ETH</p>
+                </>
+              ) : (
+                <>
+                  <p className="mt-3 text-[34px] tracking-[-0.03em] text-muted">Soon</p>
+                  <p className="mt-1 font-mono text-[12px] text-muted">Opens with Fungibl collections</p>
+                </>
+              )}
             </div>
           </div>
 
@@ -66,10 +90,21 @@ export function LaunchGallery() {
             </div>
             <Progress value={f.progress} className="mt-3" />
             <div className="mt-5 flex justify-between font-mono text-[12px] text-muted">
-              <span>{fmtInt(f.holders)} holders</span>
-              <span>
-                {fmtInt(f.ratio)} ${f.ticker} ⇄ 1 NFT
-              </span>
+              {pons ? (
+                <>
+                  <span>
+                    Raised {fmtEthPrecise(f.raisedEth ?? 0)} / {fmtEthPrecise(f.thresholdEth ?? 0)}
+                  </span>
+                  <span>Bonding curve · Pons V2</span>
+                </>
+              ) : (
+                <>
+                  <span>{holders(f)} holders</span>
+                  <span>
+                    {fmtInt(f.ratio ?? 0)} ${f.ticker} ⇄ 1 NFT
+                  </span>
+                </>
+              )}
             </div>
           </div>
 
@@ -87,7 +122,10 @@ export function LaunchGallery() {
           </Reveal>
         ))}
         <div className="flex items-center justify-between border-t border-line pt-6 font-mono text-[12px] uppercase tracking-label">
-          <span className="text-muted">Showing 5 of 320+</span>
+          <span className="text-muted">
+            Showing {1 + rows.length} of {all.length}
+            {feed.live ? " recent" : ""}
+          </span>
           <Link href="/explore" className="group inline-flex items-center gap-3">
             <span className="u-link">All launches</span> <Arrow />
           </Link>

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { PairArt } from "./art/PairArt";
 import { Arrow, Reveal, SectionHead } from "./ui";
-import { fmtEth, fmtInt, fmtUsd, launches, type LaunchStatus } from "@/lib/launches";
+import { coinMcap, coinPrice, holders, launches as demo, nftFloor, nftSupply, type Launch, type LaunchStatus } from "@/lib/launches";
 
 const TABS: { key: LaunchStatus; label: string }[] = [
   { key: "live", label: "Live" },
@@ -13,16 +13,34 @@ const TABS: { key: LaunchStatus; label: string }[] = [
   { key: "graduated", label: "Graduated" },
 ];
 
-export function Explore({ index = "04", limit }: { index?: string; limit?: number }) {
+export function Explore({
+  index = "04",
+  limit,
+  launches = demo,
+  live = false,
+}: {
+  index?: string;
+  limit?: number;
+  launches?: Launch[];
+  live?: boolean;
+}) {
   const [tab, setTab] = useState<LaunchStatus | "all">("all");
   const list = useMemo(() => {
     const l = tab === "all" ? launches : launches.filter((x) => x.status === tab);
     return limit ? l.slice(0, limit) : l;
-  }, [tab, limit]);
+  }, [tab, limit, launches]);
 
   return (
     <section id="explore" className="mx-auto max-w-[1680px] px-6 pt-28 md:px-[4.2vw] md:pt-[11vw]">
-      <SectionHead index={index} label="Explore" right={<span className="hidden md:inline">Coins × NFTs × Culture</span>} />
+      <SectionHead index={index} label="Explore" right={
+          live ? (
+            <span className="inline-flex items-center gap-2">
+              <span className="h-[6px] w-[6px] animate-pulse rounded-full bg-moss" /> Live · Pons V2
+            </span>
+          ) : (
+            <span>Sample data</span>
+          )
+        } />
 
       <div className="mt-10 flex flex-col gap-8 md:mt-14 md:flex-row md:items-end md:justify-between">
         <h2 className="text-[44px] font-[330] leading-[0.98] tracking-tightest md:text-[clamp(48px,5.4vw,96px)]">Explore</h2>
@@ -68,10 +86,22 @@ export function Explore({ index = "04", limit }: { index?: string; limit?: numbe
                 <Arrow className="mb-1 shrink-0" />
               </div>
               <dl className="mt-6 grid grid-cols-2 gap-x-6 gap-y-3 border-t border-line pt-4 font-mono text-[12px]">
-                <Stat k="Coin mkt cap" v={fmtUsd(l.marketCap)} />
-                <Stat k="NFT floor" v={fmtEth(l.floor)} />
-                <Stat k="NFT supply" v={fmtInt(l.supply)} />
-                <Stat k="Holders" v={fmtInt(l.holders)} />
+                {(l.source === "pons"
+                  ? [
+                      ["Price", coinPrice(l)],
+                      ["Mkt cap", coinMcap(l)],
+                      ["Curve", l.graduated ? "Graduated" : `${l.progress}%`],
+                      ["Collection", "Soon"],
+                    ]
+                  : [
+                      ["Coin mkt cap", coinMcap(l)],
+                      ["NFT floor", nftFloor(l)],
+                      ["NFT supply", nftSupply(l)],
+                      ["Holders", holders(l)],
+                    ]
+                ).map(([k, v]) => (
+                  <Stat key={k} k={k} v={v} />
+                ))}
               </dl>
             </Link>
           </Reveal>
@@ -85,7 +115,7 @@ function Stat({ k, v }: { k: string; v: string }) {
   return (
     <div className="flex justify-between gap-2">
       <dt className="text-muted">{k}</dt>
-      <dd className="text-ink">{v}</dd>
+      <dd className="truncate text-right text-ink">{v}</dd>
     </div>
   );
 }
