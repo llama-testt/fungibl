@@ -10,6 +10,7 @@ const LINKS = [
   { href: "/explore", label: "Explore" },
   { href: "/create", label: "Create" },
   { href: "/#how", label: "How it works" },
+  { href: "/docs", label: "Docs" },
 ];
 
 function SearchIcon() {

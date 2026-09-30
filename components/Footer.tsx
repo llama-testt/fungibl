@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Button, Mark } from "./ui";
+import { SOCIAL } from "@/lib/site";
 
 const PLATE = "/img/hero.jpg";
 
@@ -46,17 +47,23 @@ export function Footer() {
           </div>
           {[
             ["Platform", [["Launches", "/#launches"], ["Explore", "/explore"], ["Create", "/create"], ["How it works", "/#how"]]],
-            ["Protocol", [["Docs", "#"], ["Fees", "#"], ["Audits", "#"], ["Brand", "#"]]],
-            ["Elsewhere", [["X / Twitter", "#"], ["Farcaster", "#"], ["Discord", "#"], ["Mirror", "#"]]],
+            ["Docs", [["Overview", "/docs"], ["Coin ⇄ NFT", "/docs#exchange"], ["Fees", "/docs#fees"], ["Contracts", "/docs#contracts"]]],
+            ["Social", [["X / Twitter", SOCIAL.x], ["Fungibl on Pons", SOCIAL.pons]]],
           ].map(([h, links]) => (
             <div key={h as string} className="md:col-span-2">
               <p className="label">{h as string}</p>
               <ul className="mt-4 space-y-2">
                 {(links as string[][]).map(([l, href]) => (
                   <li key={l}>
-                    <Link href={href} className="u-link">
-                      {l}
-                    </Link>
+                    {href.startsWith("http") ? (
+                      <a href={href} target="_blank" rel="noreferrer" className="u-link">
+                        {l} ↗
+                      </a>
+                    ) : (
+                      <Link href={href} className="u-link">
+                        {l}
+                      </Link>
+                    )}
                   </li>
                 ))}
               </ul>
