@@ -188,8 +188,10 @@ export async function getLaunchFeed(limit = 24): Promise<LaunchFeed> {
     const found = bq ?? (await fromLogs(sample));
     if (!bq && found.length) await stampTimes(found);
     const all = (await Promise.all(found.map((f, i) => enrich(f, i)))).filter(Boolean) as Launch[];
-    const newest = all.filter((l) => l.status === "new").slice(0, Math.ceil(limit / 4));
-    const ranked = all.filter((l) => l.status !== "new").sort((a, b) => b.progress - a.progress || b.marketCap - a.marketCap);
+    const byProgress = [...all].sort((a, b) => b.progress - a.progress || b.marketCap - a.marketCap);
+    const top = byProgress.slice(0, limit - Math.ceil(limit / 4));
+    const newest = all.filter((l) => !top.includes(l)).slice(0, limit - top.length);
+    const ranked = top;
     const enriched = [...ranked.slice(0, limit - newest.length), ...newest].map((l, i) => ({ ...l, index: String(i + 1).padStart(3, "0") }));
     if (enriched.length === 0)
       return { launches: demoLaunches, live: false, source: "demo", error: `no launches enriched (scanned ${found.length})` };
