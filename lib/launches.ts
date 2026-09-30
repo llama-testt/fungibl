@@ -41,11 +41,11 @@ export type Launch = {
 
 export const launches: Launch[] = [
   {
-    id: "super-inu",
+    id: "fungi",
     index: "001",
-    name: "Super Inu",
-    ticker: "SUPER",
-    collection: "Super Inu Originals",
+    name: "Fungi",
+    ticker: "FUNGI",
+    collection: "Fungi Originals",
     status: "live",
     source: "demo",
     price: 0.0042,
@@ -59,7 +59,7 @@ export const launches: Launch[] = [
     backdrop: "summit",
     seed: 11,
     palette: 0,
-    blurb: "A thousand stone-cut dogs, found at the top of a hill nobody remembers climbing.",
+    blurb: "A thousand stone-cut fungi, found at the top of a hill nobody remembers climbing.",
     launchedAgo: "2h",
   },
   {

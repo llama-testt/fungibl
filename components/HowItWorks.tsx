@@ -17,7 +17,7 @@ const STEPS = [
     n: "02",
     t: "Trade",
     d: "Trade the coin or exchange tokens for NFTs.",
-    k: "100,000 $SUPER ⇄ 1 NFT · both ways, forever",
+    k: "100,000 $FUNGI ⇄ 1 NFT · both ways, forever",
   },
   {
     n: "03",
@@ -39,7 +39,7 @@ const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
 
 // Heavy SVGs (stone filters) render once and are only moved around.
 const Coin = memo(function Coin() {
-  return <StoneCoin letter="S" className="w-full drop-shadow-[10px_14px_12px_rgba(50,30,10,0.35)]" />;
+  return <StoneCoin letter="F" className="w-full drop-shadow-[10px_14px_12px_rgba(50,30,10,0.35)]" />;
 });
 const Card = memo(function Card({ seed, palette, number }: { seed: number; palette: number; number: string }) {
   return <NftCard seed={seed} palette={palette} number={number} className="w-full drop-shadow-[10px_14px_12px_rgba(50,30,10,0.35)]" />;
@@ -203,7 +203,7 @@ function Stage({ p }: { p: number }) {
         className="absolute bottom-[3.5%] left-[4%] right-[4%] z-[6] flex items-center justify-between rounded-[8px] border border-lineDark bg-[rgba(38,30,20,0.55)] px-[2.2cqw] py-[1.3cqw] font-mono text-[max(6.5px,1.32cqw)] uppercase tracking-label text-paper backdrop-blur-[2px]"
         style={{ opacity: clamp(s2 * 3), transform: `translateY(${(1 - clamp(s2 * 3)) * 10}px)` }}
       >
-        <span>100,000 $SUPER</span>
+        <span>100,000 $FUNGI</span>
         <span className="h-px flex-1 bg-paper/50 mx-[2cqw]" />
         <span>{s3 > 0.3 ? `${Math.round(1 + fan * 3)} NFTs · fully backed` : "1 NFT"}</span>
       </div>

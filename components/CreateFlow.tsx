@@ -355,10 +355,10 @@ export function CreateFlow({ index = "05" }: { index?: string }) {
         <form onSubmit={(e) => e.preventDefault()}>
           <Step n="01" title="Coin" note="The fungible half. Deployed as a Pons V2 token with its own bonding curve.">
             <Field label="Name">
-              <input className="field" placeholder="Super Inu" maxLength={40} value={name} onChange={(e) => setName(e.target.value)} />
+              <input className="field" placeholder="Fungi" maxLength={40} value={name} onChange={(e) => setName(e.target.value)} />
             </Field>
             <Field label="Ticker">
-              <input className="field font-mono uppercase" placeholder="SUPER" maxLength={10} value={ticker} onChange={(e) => setTicker(e.target.value)} />
+              <input className="field font-mono uppercase" placeholder="FUNGI" maxLength={10} value={ticker} onChange={(e) => setTicker(e.target.value)} />
             </Field>
             <Field label="Description" span={2}>
               <textarea
