@@ -38,7 +38,7 @@ export function WalletButton({ variant = "overlay", className = "" }: { variant?
     if (isConnected) setOpen(false);
   }, [isConnected]);
 
-  const base = `group inline-flex items-center gap-3 font-mono text-[14px] transition-colors ${BTN[variant]} ${className}`;
+  const base = `group inline-flex items-center gap-3 whitespace-nowrap font-mono text-[14px] transition-colors ${BTN[variant]} ${className}`;
   const wrongChain = isConnected && chainId !== robinhood.id;
   const hasInjected = mounted && typeof window !== "undefined" && Boolean((window as unknown as { ethereum?: unknown }).ethereum);
 
