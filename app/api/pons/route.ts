@@ -17,6 +17,8 @@ export async function GET() {
     source: feed.source,
     error: feed.error,
     count: feed.launches.length,
+    scanned: feed.scanned,
+    enriched: feed.enriched,
     sample: feed.launches.slice(0, 3).map((l) => ({ name: l.name, ticker: l.ticker, address: l.address, progress: l.progress, price: l.price })),
   };
   return NextResponse.json(out);

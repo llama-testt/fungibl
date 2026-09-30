@@ -109,7 +109,7 @@ async function enrich(f: Found, i: number): Promise<Launch | null> {
   const tok = { address: f.token, abi: tokenAbi } as const;
   const cur = { address: f.curve, abi: curveAbi } as const;
   try {
-    const [name, symbol, supply, info, reserves, real, threshold, graduated, block] = await Promise.all([
+    const [name, symbol, supply, info, reserves, real, threshold, graduated] = await Promise.all([
       client.readContract({ ...tok, functionName: "name" }),
       client.readContract({ ...tok, functionName: "symbol" }),
       client.readContract({ ...tok, functionName: "totalSupply" }),
@@ -118,7 +118,6 @@ async function enrich(f: Found, i: number): Promise<Launch | null> {
       client.readContract({ ...cur, functionName: "realQuoteReserve" }).catch(() => 0n),
       client.readContract({ ...cur, functionName: "graduationThreshold" }).catch(() => 0n),
       client.readContract({ ...cur, functionName: "graduated" }).catch(() => false),
-      f.time ? Promise.resolve(null) : client.getBlock({ blockNumber: f.block }).catch(() => null),
     ]);
     const [q, t] = reserves as readonly [bigint, bigint];
     const price = t > 0n ? Number(formatEther(q)) / Number(formatEther(t)) : 0;
@@ -126,7 +125,7 @@ async function enrich(f: Found, i: number): Promise<Launch | null> {
     const raised = Number(formatEther(real));
     const thr = Number(formatEther(threshold));
     const progress = graduated ? 100 : thr > 0 ? Math.min(100, Math.round((raised / thr) * 100)) : 0;
-    const time = f.time ?? (block ? Number(block.timestamp) : undefined);
+    const time = f.time;
     const age = time ? Date.now() / 1000 - time : Infinity;
     const status: LaunchStatus = graduated ? "graduated" : progress >= 25 ? "trending" : age < 3600 ? "new" : "live";
     const h = hash(f.token.toLowerCase());
@@ -167,7 +166,18 @@ async function enrich(f: Found, i: number): Promise<Launch | null> {
   }
 }
 
-export type LaunchFeed = { launches: Launch[]; live: boolean; source: "bitquery" | "rpc" | "demo"; error?: string };
+/** Two block lookups, then interpolate — avoids one RPC call per launch. */
+async function stampTimes(found: Found[]) {
+  const blocks = found.map((f) => f.block);
+  const hi = blocks.reduce((a, b) => (b > a ? b : a));
+  const lo = blocks.reduce((a, b) => (b < a ? b : a));
+  const [bh, bl] = await Promise.all([client.getBlock({ blockNumber: hi }), client.getBlock({ blockNumber: lo })]);
+  const th = Number(bh.timestamp), tl = Number(bl.timestamp);
+  const span = Number(hi - lo) || 1;
+  for (const f of found) f.time = Math.round(tl + ((th - tl) * Number(f.block - lo)) / span);
+}
+
+export type LaunchFeed = { launches: Launch[]; live: boolean; source: "bitquery" | "rpc" | "demo"; error?: string; scanned?: number; enriched?: number };
 
 /** Latest Pons V2 launches, enriched from chain. Falls back to demo data if the chain can't be reached. */
 export async function getLaunchFeed(limit = 24): Promise<LaunchFeed> {
@@ -176,12 +186,14 @@ export async function getLaunchFeed(limit = 24): Promise<LaunchFeed> {
     const sample = Math.max(limit * 5, 120);
     const bq = await fromBitquery(sample);
     const found = bq ?? (await fromLogs(sample));
+    if (!bq && found.length) await stampTimes(found);
     const all = (await Promise.all(found.map((f, i) => enrich(f, i)))).filter(Boolean) as Launch[];
     const newest = all.filter((l) => l.status === "new").slice(0, Math.ceil(limit / 4));
     const ranked = all.filter((l) => l.status !== "new").sort((a, b) => b.progress - a.progress || b.marketCap - a.marketCap);
     const enriched = [...ranked.slice(0, limit - newest.length), ...newest].map((l, i) => ({ ...l, index: String(i + 1).padStart(3, "0") }));
-    if (enriched.length === 0) return { launches: demoLaunches, live: false, source: "demo", error: "no launches found" };
-    return { launches: enriched, live: true, source: bq ? "bitquery" : "rpc" };
+    if (enriched.length === 0)
+      return { launches: demoLaunches, live: false, source: "demo", error: `no launches enriched (scanned ${found.length})` };
+    return { launches: enriched, live: true, source: bq ? "bitquery" : "rpc", scanned: found.length, enriched: all.length };
   } catch (e) {
     return { launches: demoLaunches, live: false, source: "demo", error: e instanceof Error ? e.message.slice(0, 200) : "unknown" };
   }
