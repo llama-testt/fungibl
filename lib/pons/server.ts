@@ -6,7 +6,8 @@ import { launches as demoLaunches, type Backdrop, type Launch, type LaunchStatus
 
 const client = createPublicClient({
   chain: robinhood,
-  transport: http(process.env.ROBINHOOD_RPC_URL || RPC_URL, { batch: { batchSize: 40, wait: 10 }, timeout: 12_000 }),
+  batch: { multicall: { batchSize: 2048, wait: 16 } },
+  transport: http(process.env.ROBINHOOD_RPC_URL || RPC_URL, { timeout: 8_000 }),
 });
 
 type Found = { token: Address; curve: Address; deployer: Address; block: bigint; time?: number };
@@ -82,9 +83,9 @@ async function fromLogs(limit: number): Promise<Found[]> {
   >;
   const latest = await client.getBlockNumber();
   let to = latest;
-  let span = 400_000n;
+  let span = 20_000n;
   const found: Found[] = [];
-  const deadline = Date.now() + 9_000;
+  const deadline = Date.now() + 10_000;
   for (let i = 0; i < 40 && found.length < limit && to > 0n && Date.now() < deadline; i++) {
     const from = to > span ? to - span : 0n;
     try {
@@ -94,7 +95,7 @@ async function fromLogs(limit: number): Promise<Found[]> {
         if (a.token && a.curve && a.deployer) found.push({ token: a.token, curve: a.curve, deployer: a.deployer, block: l.blockNumber });
       }
       to = from - 1n;
-      if (logs.length === 0 && span < 3_200_000n) span *= 2n;
+      if (logs.length === 0 && span < 1_000_000n) span *= 2n;
     } catch {
       // RPC range limit: shrink and retry the same window
       span = span / 4n;
@@ -127,7 +128,7 @@ async function enrich(f: Found, i: number): Promise<Launch | null> {
     const progress = graduated ? 100 : thr > 0 ? Math.min(100, Math.round((raised / thr) * 100)) : 0;
     const time = f.time ?? (block ? Number(block.timestamp) : undefined);
     const age = time ? Date.now() / 1000 - time : Infinity;
-    const status: LaunchStatus = graduated ? "graduated" : age < 6 * 3600 ? "new" : progress >= 40 ? "trending" : "live";
+    const status: LaunchStatus = graduated ? "graduated" : progress >= 25 ? "trending" : age < 3600 ? "new" : "live";
     const h = hash(f.token.toLowerCase());
     const desc = info ? (info as readonly [Address, string, string, unknown])[2] : "";
     const logo = info ? (info as readonly [Address, string, string, unknown])[1] : "";
@@ -171,9 +172,14 @@ export type LaunchFeed = { launches: Launch[]; live: boolean; source: "bitquery"
 /** Latest Pons V2 launches, enriched from chain. Falls back to demo data if the chain can't be reached. */
 export async function getLaunchFeed(limit = 24): Promise<LaunchFeed> {
   try {
-    const bq = await fromBitquery(limit);
-    const found = bq ?? (await fromLogs(limit));
-    const enriched = (await Promise.all(found.map((f, i) => enrich(f, i)))).filter(Boolean) as Launch[];
+    // Pons sees hundreds of launches a day; sample a wider window, then rank.
+    const sample = Math.max(limit * 5, 120);
+    const bq = await fromBitquery(sample);
+    const found = bq ?? (await fromLogs(sample));
+    const all = (await Promise.all(found.map((f, i) => enrich(f, i)))).filter(Boolean) as Launch[];
+    const newest = all.filter((l) => l.status === "new").slice(0, Math.ceil(limit / 4));
+    const ranked = all.filter((l) => l.status !== "new").sort((a, b) => b.progress - a.progress || b.marketCap - a.marketCap);
+    const enriched = [...ranked.slice(0, limit - newest.length), ...newest].map((l, i) => ({ ...l, index: String(i + 1).padStart(3, "0") }));
     if (enriched.length === 0) return { launches: demoLaunches, live: false, source: "demo", error: "no launches found" };
     return { launches: enriched, live: true, source: bq ? "bitquery" : "rpc" };
   } catch (e) {
