@@ -218,7 +218,56 @@ export const launches: Launch[] = [
   },
 ];
 
-export const getDemoLaunch = (id: string) => launches.find((l) => l.id === id);
+/** The only entries shown on /explore for now. */
+export const testLaunches: Launch[] = [
+  {
+    ...launches[0],
+    id: "test-fungi",
+    index: "001",
+    name: "Test Fungi",
+    ticker: "TFUNGI",
+    collection: "Test Fungi Originals",
+    status: "live",
+    backdrop: "sky",
+    seed: 11,
+    palette: 0,
+    progress: 64,
+    blurb: "A test launch for Fungibl — one coin, one collection.",
+    launchedAgo: "2h",
+  },
+  {
+    ...launches[1],
+    id: "test-fungi-2",
+    index: "002",
+    name: "Test Fungi 2",
+    ticker: "TFUNGI2",
+    collection: "Test Fungi 2 Originals",
+    status: "new",
+    backdrop: "valley",
+    seed: 7,
+    palette: 2,
+    progress: 17,
+    blurb: "The second test launch — freshly minted, early on its curve.",
+    launchedAgo: "38m",
+  },
+  {
+    ...launches[2],
+    id: "test-fungi-3",
+    index: "003",
+    name: "Test Fungi 3",
+    ticker: "TFUNGI3",
+    collection: "Test Fungi 3 Originals",
+    status: "trending",
+    backdrop: "moon",
+    seed: 23,
+    palette: 5,
+    progress: 79,
+    blurb: "The third test launch — most of its curve already filled.",
+    launchedAgo: "1d",
+  },
+];
+
+export const getDemoLaunch = (id: string) => [...launches, ...testLaunches].find((l) => l.id === id);
 
 export const fmtUsd = (n: number) => {
   if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(n >= 10_000_000 ? 0 : 2).replace(/\.?0+$/, "")}M`;

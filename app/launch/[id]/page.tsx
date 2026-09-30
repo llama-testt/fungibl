@@ -8,7 +8,7 @@ import { Footer } from "@/components/Footer";
 import { Progress } from "@/components/LaunchRow";
 import { Navbar } from "@/components/Navbar";
 import { Arrow } from "@/components/ui";
-import { coinMcap, coinPrice, fmtEthPrecise, getDemoLaunch, holders, launches, mintedLine, nftFloor, nftSupply, type Launch } from "@/lib/launches";
+import { coinMcap, coinPrice, fmtEthPrecise, getDemoLaunch, holders, launches, mintedLine, testLaunches, nftFloor, nftSupply, type Launch } from "@/lib/launches";
 import { explorerAddress } from "@/lib/pons/chain";
 import { getLaunchByAddress } from "@/lib/pons/server";
 
@@ -20,7 +20,7 @@ async function load(id: string): Promise<Launch | null> {
 }
 
 export function generateStaticParams() {
-  return launches.map((l) => ({ id: l.id }));
+  return [...launches, ...testLaunches].map((l) => ({ id: l.id }));
 }
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
