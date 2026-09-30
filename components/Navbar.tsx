@@ -6,7 +6,6 @@ import { useState } from "react";
 import { WalletButton } from "./WalletButton";
 
 const LINKS = [
-  { href: "/#launches", label: "Launches" },
   { href: "/explore", label: "Explore" },
   { href: "/create", label: "Create" },
   { href: "/#how", label: "How it works" },
