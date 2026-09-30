@@ -357,8 +357,6 @@ export function HowItWorks() {
           <MobileStep key={s.n} i={i} />
         ))}
       </div>
-
-      <div className="border-t border-line" />
     </section>
   );
 }
