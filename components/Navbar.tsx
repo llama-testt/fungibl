@@ -14,15 +14,6 @@ const LINKS = [
   { href: "/docs", label: "Docs" },
 ];
 
-function SearchIcon() {
-  return (
-    <svg viewBox="0 0 20 20" className="h-[19px] w-[19px]" aria-hidden>
-      <circle cx="8.5" cy="8.5" r="6" fill="none" stroke="currentColor" strokeWidth="1.4" />
-      <path d="M13 13l5 5" stroke="currentColor" strokeWidth="1.4" />
-    </svg>
-  );
-}
-
 /**
  * `overlay` sits inside the hero window, over the photograph.
  * `paper` is used on inner pages, on the cream ground.
@@ -48,9 +39,6 @@ export function Navbar({ variant = "overlay" }: { variant?: "overlay" | "paper" 
         </ul>
 
         <div className="ml-auto hidden items-center gap-[1.6vw] md:flex">
-          <button aria-label="Search launches" className="flex h-9 w-9 items-center justify-center text-ink/85 transition-opacity hover:opacity-60">
-            <SearchIcon />
-          </button>
           <a
             href={SOCIAL.x}
             target="_blank"
