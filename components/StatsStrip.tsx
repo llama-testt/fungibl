@@ -1,68 +1,65 @@
-function Coins() {
+function Swap() {
   return (
-    <svg viewBox="0 0 28 32" className="h-[30px] w-[26px]" aria-hidden>
-      {[0, 7, 14, 21].map((y) => (
-        <g key={y}>
-          <ellipse cx="14" cy={y + 5} rx="12" ry="4.2" fill="none" stroke="currentColor" strokeWidth="1.5" />
-        </g>
-      ))}
-      <path d="M2 5v21M26 5v21" stroke="currentColor" strokeWidth="1.5" />
+    <svg viewBox="0 0 28 24" className="h-[24px] w-[28px]" aria-hidden fill="none" stroke="currentColor" strokeWidth="1.6">
+      <path d="M2 8h22M18 3l5 5-5 5" />
+      <path d="M26 16H4M10 11l-5 5 5 5" />
     </svg>
   );
 }
-function People() {
+function Curve() {
   return (
-    <svg viewBox="0 0 32 26" className="h-[26px] w-[32px]" aria-hidden fill="currentColor">
-      <circle cx="11" cy="7" r="5" />
-      <path d="M1 25c0-6 4.5-10 10-10s10 4 10 10z" />
-      <circle cx="23" cy="8" r="4.2" opacity="0.85" />
-      <path d="M19 15.6c1.2-.5 2.6-.8 4-.8 4.7 0 8 3.6 8 9.2h-8.4c-.3-3.5-1.5-6.3-3.6-8.4z" opacity="0.85" />
+    <svg viewBox="0 0 28 26" className="h-[26px] w-[28px]" aria-hidden fill="none" stroke="currentColor" strokeWidth="1.6">
+      <path d="M2 2v22h24" strokeOpacity="0.55" />
+      <path d="M4 22c8 0 14-4 20-17" />
+      <circle cx="24" cy="5" r="2.2" fill="currentColor" stroke="none" />
     </svg>
   );
 }
-function Bars() {
+function Chain() {
   return (
-    <svg viewBox="0 0 26 28" className="h-[28px] w-[24px]" aria-hidden fill="currentColor">
-      <rect x="0" y="16" width="6" height="12" />
-      <rect x="10" y="9" width="6" height="19" />
-      <rect x="20" y="0" width="6" height="28" />
+    <svg viewBox="0 0 28 28" className="h-[26px] w-[26px]" aria-hidden fill="none" stroke="currentColor" strokeWidth="1.6">
+      <path d="M14 2l10.4 6v12L14 26 3.6 20V8z" />
+      <path d="M14 8l5.2 3v6L14 20l-5.2-3v-6z" strokeOpacity="0.6" />
+    </svg>
+  );
+}
+function Lock() {
+  return (
+    <svg viewBox="0 0 24 28" className="h-[26px] w-[22px]" aria-hidden fill="none" stroke="currentColor" strokeWidth="1.6">
+      <rect x="3" y="12" width="18" height="14" rx="2" />
+      <path d="M7 12V8a5 5 0 0 1 10 0v4" />
+      <circle cx="12" cy="19" r="1.6" fill="currentColor" stroke="none" />
     </svg>
   );
 }
 
-const STATS = [
-  { icon: <Coins />, value: "320+", label: "Launches" },
-  { icon: <People />, value: "180K+", label: "Collectors" },
-  { icon: <Bars />, value: "$12.4M+", label: "Volume traded" },
+const ITEMS = [
+  { icon: <Swap />, value: "Coin ⇄ NFT", label: "Two-way · fixed ratio" },
+  { icon: <Curve />, value: "Pons V2", label: "Bonding-curve launch" },
+  { icon: <Chain />, value: "Robinhood Chain", label: "L2 · ETH gas" },
+  { icon: <Lock />, value: "Uniswap V4", label: "Locked liquidity" },
 ];
 
-/** One long translucent strip — never separate cards. */
+/** One long translucent strip — what Fungibl is built on, never vanity numbers. */
 export function StatsStrip({ className = "" }: { className?: string }) {
   return (
     <div
-      className={`grid grid-cols-2 rounded-[12px] border border-lineDark bg-[rgba(38,30,20,0.52)] text-paper backdrop-blur-[3px] md:flex md:items-center ${className}`}
+      className={`grid grid-cols-2 rounded-[12px] border border-lineDark bg-[rgba(38,30,20,0.52)] text-paper backdrop-blur-[3px] md:flex md:items-stretch ${className}`}
     >
-      {STATS.map((s, i) => (
+      {ITEMS.map((s, i) => (
         <div
-          key={s.label}
-          className={`flex items-center gap-4 px-5 py-4 md:gap-[1.6vw] md:px-[2.6%] md:py-0 ${
-            i > 0 ? "md:border-l md:border-lineDark" : ""
-          } ${i === 1 ? "border-l border-lineDark md:border-l" : ""} ${i === 2 ? "border-t border-lineDark md:border-t-0" : ""} md:flex-[0_0_auto] md:min-w-[21%]`}
+          key={s.value}
+          className={`flex min-w-0 items-center gap-3 px-4 py-3.5 md:flex-1 md:gap-[1.4vw] md:px-[2.4%] md:py-0 ${i % 2 === 1 ? "border-l border-lineDark" : ""} ${
+            i >= 2 ? "border-t border-lineDark md:border-t-0" : ""
+          } ${i === 2 ? "md:border-l" : ""}`}
         >
-          <span className="text-paper/75">{s.icon}</span>
-          <span className="leading-none">
-            <span className="block text-[20px] font-medium tracking-[-0.02em] md:text-[clamp(18px,1.6vw,24px)]">{s.value}</span>
-            <span className="mt-[7px] block font-mono text-[10px] uppercase tracking-label text-paper/70 md:text-[11px]">{s.label}</span>
+          <span className="hidden shrink-0 text-paper/75 sm:block">{s.icon}</span>
+          <span className="min-w-0 leading-none">
+            <span className="block truncate text-[15px] font-medium tracking-[-0.02em] md:text-[clamp(14px,1.35vw,22px)]">{s.value}</span>
+            <span className="mt-[7px] block truncate font-mono text-[9px] uppercase tracking-[0.06em] text-paper/70 md:text-[clamp(9px,0.75vw,10.5px)] md:tracking-label">{s.label}</span>
           </span>
         </div>
       ))}
-      <div className="flex items-center gap-5 border-l border-t border-lineDark px-5 py-4 md:ml-0 md:flex-1 md:border-t-0 md:px-[4%] md:py-0">
-        <span className="hidden h-px w-[52px] bg-paper/50 lg:block" />
-        <span className="font-mono text-[10px] uppercase leading-[1.8] tracking-label text-paper/75 md:text-[11px]">
-          Coins <span className="px-1">×</span> NFTs <span className="px-1">×</span> Community
-          <br />A new kind of launchpad
-        </span>
-      </div>
     </div>
   );
 }
