@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Button, Mark } from "./ui";
 import { SOCIAL } from "@/lib/site";
 import { DotWordmark } from "./DotWordmark";
+import { BuiltWith } from "./BuiltWith";
 
 const PLATE = "/img/hero.jpg";
 
@@ -77,7 +78,9 @@ export function Footer() {
           </p>
         </div>
 
-        <DotWordmark className="relative z-0 mt-16 md:mt-24" />
+        <BuiltWith className="relative z-10 mt-12 border-t border-line pt-8 md:mt-16" />
+
+        <DotWordmark className="relative z-0 mt-14 md:mt-20" />
       </div>
     </footer>
   );
